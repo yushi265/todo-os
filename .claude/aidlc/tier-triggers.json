@@ -1,0 +1,13 @@
+{
+  "$comment": "Tier 1（高リスク・事前承認必須）に該当する変更を検出するトリガー（プロジェクトの高リスク要素の glob + 内容パターン）。正本は .claude/rules/risk-tiers.md の Tier 1 対象。正本を変えたらここも同期する（drift guard が対応を検査）。下記は例。プロジェクトの高リスク要素（DB スキーマ / 認証・認可 / データ境界 / 公開 IF 等）に置き換える。tier-tripwire sensor が、宣言 tier 2/3 のボルトでこれらに触れたら昇格再宣言を勧告する。記法の凡例: glob はブレース展開（{a,b}）非対応。1 要素で複数パスを守るときは同一 id のエントリを複数に分ける。ファイル全体が保護対象（触れたら即 Tier 1）なら contentPattern は \".+\"（追加行の存在だけで判定）。",
+  "version": 1,
+  "source": ".claude/rules/risk-tiers.md",
+  "triggers": [
+    {
+      "id": "db-schema",
+      "glob": "**/migrations/**",
+      "contentPattern": "CREATE TABLE|ALTER TABLE|DROP TABLE",
+      "$comment": "例: DB スキーマ変更（マイグレーション）。glob をプロジェクトのマイグレーション配置に合わせる。DDL を持たないプロジェクトは削除してよい。他の高リスク要素（認証・認可 / データ境界 / 公開 API 等）を検出したいトリガーは、glob + contentPattern を足してここに追加する"
+    }
+  ]
+}

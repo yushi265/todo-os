@@ -1,0 +1,6 @@
+{
+  "$comment": "context-budget guard（委譲の起動抑制）の設定。PreToolUse(Task|Agent) hook が transcript の直近 usage から現コンテキスト量を推定し、contextWindow × blockRatio 以上なら委譲をブロックして「チェックポイント確定 → compact → 再開」へ誘導する。contextWindow はメイン会話モデルのコンテキスト窓に合わせる（既定 200000 = 200k。1M コンテキスト等の環境では実窓に更新する。小さすぎる分には安全側 = 早めに抑制されるだけ）。blockRatio は 0–1（既定 0.9 = 90%）。無効化するには settings.json の PreToolUse 配線を外す。判定ロジックは src/contextguard/check.ts・fail-open（usage 不読は allow）。",
+  "version": 1,
+  "contextWindow": 200000,
+  "blockRatio": 0.9
+}

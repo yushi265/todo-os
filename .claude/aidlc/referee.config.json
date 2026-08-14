@@ -1,0 +1,22 @@
+{
+  "$comment": "referee-check のコマンド表。Stage 5 の権威再実行で走らせる検証コマンドを宣言する（ハードコードせず、プロジェクトの各レイヤーと検証コマンドをここで定義する）。cwd は repo root 相対。--layer all で全レイヤー + post を実行し、exit 0 の集合だけが権威 green（コマンド不在の層は unavailable = 総合 green を名乗らない）。<...> は各プロジェクトが自分のスタックに置き換える。単一レイヤーのプロジェクトなら 1 つだけ定義してよい。",
+  "layers": {
+    "service": {
+      "cwd": ".",
+      "command": ["<このレイヤーのテストコマンド。例: プロジェクトのユニット/結合テスト>"],
+      "$comment": "例: ドメイン/ロジック層。command は argv を配列で（例: [\"make\",\"test\"] や [\"npm\",\"test\"]）。cwd はそのレイヤーのルート（repo root 相対）"
+    },
+    "ui": {
+      "cwd": ".",
+      "precondition": "node_modules",
+      "command": ["sh", "-c", "<型チェック && テスト。例: 型検査とコンポーネントテスト>"],
+      "$comment": "例: 表示層。precondition を指定すると、その相対パスが cwd 配下に無いとき RED でなく unavailable 扱いにする（依存未導入マシンでの誤 RED を防ぐガード・任意）。不要なら precondition を削除"
+    }
+  },
+  "post": {
+    "name": "pre-commit",
+    "cwd": ".",
+    "command": ["npx", "lefthook", "run", "pre-commit"],
+    "$comment": "全レイヤー共通の pre-commit ゲート。lefthook を使うなら維持（lint/format/secret 検知をここで担保）。使わないなら post キーごと削除してよい"
+  }
+}
