@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { TodoResponse } from "../../shared/types";
 import { useShowCompleted } from "../hooks/useShowCompleted";
-import { useTodos } from "../hooks/useTodos";
+import { ApiError, useDeleteTodo, useTodos } from "../hooks/useTodos";
 import CompletedToggle from "./CompletedToggle";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
+import TagManagementModal from "./TagManagementModal";
 import TodoFormModal from "./TodoFormModal";
 import TodoList from "./TodoList";
 
@@ -16,13 +17,29 @@ function TodoListPage() {
   const [showCompleted, setShowCompleted] = useShowCompleted();
   const [modalState, setModalState] = useState<ModalState>(null);
   const [deleteTarget, setDeleteTarget] = useState<TodoResponse | null>(null);
+  const [isTagManagementOpen, setIsTagManagementOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const deleteMutation = useDeleteTodo();
 
   function handleNotFound() {
     setToast("対象の TODO が見つかりませんでした");
     setModalState(null);
     setDeleteTarget(null);
     void refetch();
+  }
+
+  function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    deleteMutation.mutate(deleteTarget.id, {
+      onSuccess: () => setDeleteTarget(null),
+      onError: (error) => {
+        if (error instanceof ApiError && error.status === 404) {
+          handleNotFound();
+          return;
+        }
+        setToast("時間をおいて再度お試しください");
+      },
+    });
   }
 
   return (
@@ -34,6 +51,13 @@ function TodoListPage() {
             checked={showCompleted}
             onChange={setShowCompleted}
           />
+          <button
+            type="button"
+            onClick={() => setIsTagManagementOpen(true)}
+            className="min-h-11 rounded border border-gray-300 px-4 py-2 hover:bg-gray-50"
+          >
+            タグ管理
+          </button>
           <button
             type="button"
             onClick={() => setModalState({ type: "create" })}
@@ -96,10 +120,16 @@ function TodoListPage() {
 
       {deleteTarget && (
         <DeleteConfirmDialog
-          todo={deleteTarget}
+          title="TODOを削除"
+          message={`「${deleteTarget.title}」を削除しますか？この操作は取り消せません。`}
+          onConfirm={handleDeleteConfirm}
           onClose={() => setDeleteTarget(null)}
-          onNotFound={handleNotFound}
+          isPending={deleteMutation.isPending}
         />
+      )}
+
+      {isTagManagementOpen && (
+        <TagManagementModal onClose={() => setIsTagManagementOpen(false)} />
       )}
 
       {toast && (

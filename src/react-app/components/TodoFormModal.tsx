@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { createTodoSchema, updateTodoSchema } from "../../shared/schemas";
 import type { TodoResponse, TodoStatus } from "../../shared/types";
 import { ApiError, useCreateTodo, useUpdateTodo } from "../hooks/useTodos";
+import TagMultiSelect from "./TagMultiSelect";
 
 type PriorityValue = "" | "HIGH" | "MEDIUM" | "LOW";
 
@@ -12,6 +13,7 @@ interface FormValues {
   priority: PriorityValue;
   dueDate: string;
   status: TodoStatus;
+  tagIds: number[];
 }
 
 interface TodoFormModalProps {
@@ -36,6 +38,7 @@ function initialValues(todo: TodoResponse | null): FormValues {
       priority: "",
       dueDate: "",
       status: "TODO",
+      tagIds: [],
     };
   }
   return {
@@ -44,6 +47,7 @@ function initialValues(todo: TodoResponse | null): FormValues {
     priority: todo.priority ?? "",
     dueDate: todo.dueDate ?? "",
     status: todo.status,
+    tagIds: todo.tags.map((tag) => tag.id),
   };
 }
 
@@ -85,6 +89,15 @@ function TodoFormModal({
         return;
       }
       if (error.status === 400) {
+        // tagIds の存在チェック違反（サーバー側の防御的分岐。タグ削除と TODO 編集が
+        // 同時に行われた場合の競合等）はタグ選択欄の直下にエラーを表示する（ui.md 異常系挙動）。
+        if (error.message.toLowerCase().includes("tagid")) {
+          setFieldErrors((prev) => ({
+            ...prev,
+            tagIds: "指定したタグが存在しません。タグの選択を見直してください",
+          }));
+          return;
+        }
         setSubmitError(error.message || "入力内容を確認してください");
         return;
       }
@@ -102,6 +115,7 @@ function TodoFormModal({
       description: values.description === "" ? null : values.description,
       priority: values.priority === "" ? null : values.priority,
       dueDate: values.dueDate === "" ? null : values.dueDate,
+      tagIds: values.tagIds,
     };
 
     if (isEdit && todo) {
@@ -122,6 +136,7 @@ function TodoFormModal({
             priority: result.data.priority ?? null,
             dueDate: result.data.dueDate ?? null,
             status: result.data.status,
+            tagIds: result.data.tagIds ?? [],
           },
         },
         { onSuccess: onClose, onError: handleMutationError },
@@ -140,6 +155,7 @@ function TodoFormModal({
         description: result.data.description ?? null,
         priority: result.data.priority ?? null,
         dueDate: result.data.dueDate ?? null,
+        tagIds: result.data.tagIds ?? [],
       },
       { onSuccess: onClose, onError: handleMutationError },
     );
@@ -255,6 +271,14 @@ function TodoFormModal({
               <p className="text-sm text-red-600">{fieldErrors.dueDate}</p>
             )}
           </div>
+
+          <TagMultiSelect
+            selectedTagIds={values.tagIds}
+            onChange={(tagIds) => setValues((v) => ({ ...v, tagIds }))}
+          />
+          {fieldErrors.tagIds && (
+            <p className="text-sm text-red-600">{fieldErrors.tagIds}</p>
+          )}
 
           {isEdit && (
             <div className="flex flex-col gap-1">

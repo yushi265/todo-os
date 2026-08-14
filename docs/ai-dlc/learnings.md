@@ -49,5 +49,7 @@ pnpm -C .claude/aidlc learnings   # docs/ai-dlc/retro/ を集約 → 未対応 T
 
 - [2026-08-15] specのテスト戦略表で「単体」列にセルがある場合、実装委譲プロンプトに「該当ロジックは独立関数として抽出し単体テストを書くこと」を明示指示する `[tdd]` → 還流先候補: .claude/agents/implementer.md または .claude/skills/ai-dlc-flow/SKILL.md（Stage 3+4手順） （出典: todo-crud-basic retro）
 - [2026-08-15] spec作成時、API契約のフィールド形式（日時等）は既存実装（DBデフォルト値等）を実際に確認してから記述する。断定的記述（例:「ISO 8601」）を未確認のまま書かない `[spec]` → 還流先候補: .claude/skills/create-spec/SKILL.md （出典: todo-crud-basic retro）
+- [2026-08-15] コンポーネントのprops形状を変更（汎用化等のリファクタ）する際は、変更前の実装が持っていた非機能要件（無効化・ローディング状態・a11y属性等）を洗い出してから着手する `[review]` → 還流先候補: .claude/agents/implementer.md （出典: tag-management retro）
+- [2026-08-15] spec作成時、「異常系挙動」表に書いた全シナリオを「テストケース」節にも転記する（表に書いただけでは実装エージェントがテスト化を後回しにしやすい） `[tdd]` → 還流先候補: .claude/skills/create-spec/SKILL.md （出典: tag-management retro）
 
 > 昇格・剪定したら該当行を除去し、その旨を triage 実施記録（[retro/README.md](./retro/README.md)）に残す。

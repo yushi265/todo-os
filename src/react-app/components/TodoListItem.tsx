@@ -1,5 +1,6 @@
 import type { TodoResponse } from "../../shared/types";
 import { isOverdue } from "../lib/isOverdue";
+import TagBadge from "./TagBadge";
 
 const STATUS_LABEL: Record<TodoResponse["status"], string> = {
   TODO: "未着手",
@@ -51,6 +52,16 @@ function TodoListItem({ todo, onClick, onDeleteClick }: TodoListItemProps) {
         </span>
         {overdue && (
           <span className="text-sm font-semibold text-red-600">期限切れ</span>
+        )}
+        {todo.tags.length > 0 && (
+          <span
+            data-testid={`todo-tags-${todo.id}`}
+            className="flex flex-wrap gap-1"
+          >
+            {todo.tags.map((tag) => (
+              <TagBadge key={tag.id} tag={tag} />
+            ))}
+          </span>
         )}
       </button>
       <button

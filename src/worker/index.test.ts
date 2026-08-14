@@ -1,16 +1,21 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { env, exports } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
-import { todos } from "../db/schema";
-import type { ErrorResponse, TodoResponse } from "../shared/types";
+import { tags, todos, todoTags } from "../db/schema";
+import type { ErrorResponse, TagResponse, TodoResponse } from "../shared/types";
 
 const BASE_URL = "https://example.com";
 
 // D1 storage in this pool persists across `it()` blocks within the same test
 // file (no automatic per-test snapshot/rollback for D1), so each test starts
-// from a clean `todos` table explicitly.
+// from a clean slate explicitly. `todoTags` is cleared explicitly (rather than
+// relying on ON DELETE CASCADE from `todos`/`tags`) so test isolation does not
+// depend on the very cascade behavior that AC-3's tests independently verify.
 beforeEach(async () => {
-  await drizzle(env.DB).delete(todos);
+  const db = drizzle(env.DB);
+  await db.delete(todoTags);
+  await db.delete(tags);
+  await db.delete(todos);
 });
 
 function buildRequest(method: string, path: string, body?: unknown): Request {
@@ -33,6 +38,11 @@ async function call(
 async function createTodo(body: unknown): Promise<TodoResponse> {
   const res = await call("POST", "/api/todos", body);
   return (await res.json()) as TodoResponse;
+}
+
+async function createTag(body: unknown): Promise<TagResponse> {
+  const res = await call("POST", "/api/tags", body);
+  return (await res.json()) as TagResponse;
 }
 
 describe("POST /api/todos", () => {
@@ -161,6 +171,45 @@ describe("POST /api/todos", () => {
     const body = (await res.json()) as TodoResponse;
     expect(body.sortOrder).toBe(6);
   });
+
+  it("creates a todo with tagIds and includes the tags in the response", async () => {
+    const tagA = await createTag({ name: "tag-a" });
+    const tagB = await createTag({ name: "tag-b" });
+
+    const res = await call("POST", "/api/todos", {
+      title: "tagged todo",
+      tagIds: [tagA.id, tagB.id],
+    });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as TodoResponse;
+    expect(body.tags.map((tag) => tag.id).sort((a, b) => a - b)).toEqual(
+      [tagA.id, tagB.id].sort((a, b) => a - b),
+    );
+  });
+
+  it("creates a todo with an empty tags array when tagIds is omitted", async () => {
+    const res = await call("POST", "/api/todos", { title: "no tags" });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as TodoResponse;
+    expect(body.tags).toEqual([]);
+  });
+
+  it("rejects tagIds that do not exist and does not create the todo", async () => {
+    const res = await call("POST", "/api/todos", {
+      title: "bad tag ref",
+      tagIds: [999999],
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorResponse;
+    expect(body.error).toBe("One or more tagIds do not exist");
+
+    const listRes = await call("GET", "/api/todos");
+    const list = (await listRes.json()) as TodoResponse[];
+    expect(list.some((todo) => todo.title === "bad tag ref")).toBe(false);
+  });
 });
 
 describe("GET /api/todos", () => {
@@ -189,6 +238,41 @@ describe("GET /api/todos", () => {
       "third",
     ]);
   });
+
+  it("returns each todo with its correct combination of tags when multiple todos and tags exist (join, not N+1)", async () => {
+    const tagX = await createTag({ name: "x" });
+    const tagY = await createTag({ name: "y" });
+    const tagZ = await createTag({ name: "z" });
+
+    const todo1 = await createTodo({
+      title: "todo1",
+      tagIds: [tagX.id, tagY.id],
+    });
+    const todo2 = await createTodo({
+      title: "todo2",
+      tagIds: [tagY.id, tagZ.id],
+    });
+    const todo3 = await createTodo({ title: "todo3" });
+
+    const res = await call("GET", "/api/todos");
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as TodoResponse[];
+    const byId = new Map(body.map((todo) => [todo.id, todo]));
+    expect(
+      byId
+        .get(todo1.id)
+        ?.tags.map((tag) => tag.id)
+        .sort((a, b) => a - b),
+    ).toEqual([tagX.id, tagY.id].sort((a, b) => a - b));
+    expect(
+      byId
+        .get(todo2.id)
+        ?.tags.map((tag) => tag.id)
+        .sort((a, b) => a - b),
+    ).toEqual([tagY.id, tagZ.id].sort((a, b) => a - b));
+    expect(byId.get(todo3.id)?.tags).toEqual([]);
+  });
 });
 
 describe("GET /api/todos/:id", () => {
@@ -208,6 +292,23 @@ describe("GET /api/todos/:id", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as TodoResponse;
     expect(body).toEqual(created);
+  });
+
+  it("no longer lists a tag once that tag has been deleted (todo_tags ON DELETE CASCADE)", async () => {
+    const tag = await createTag({ name: "cascade-me" });
+    const created = await createTodo({
+      title: "tagged todo",
+      tagIds: [tag.id],
+    });
+
+    const deleteRes = await call("DELETE", `/api/tags/${tag.id}`);
+    expect(deleteRes.status).toBe(204);
+
+    const res = await call("GET", `/api/todos/${created.id}`);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as TodoResponse;
+    expect(body.tags).toEqual([]);
   });
 });
 
@@ -331,6 +432,75 @@ describe("PATCH /api/todos/:id", () => {
     const resumeBody = (await resumeRes.json()) as TodoResponse;
     expect(resumeBody.status).toBe("IN_PROGRESS");
   });
+
+  it("replaces tag associations with a new combination of tagIds", async () => {
+    const tagA = await createTag({ name: "a" });
+    const tagB = await createTag({ name: "b" });
+    const tagC = await createTag({ name: "c" });
+    const created = await createTodo({
+      title: "retag me",
+      tagIds: [tagA.id, tagB.id],
+    });
+
+    const res = await call("PATCH", `/api/todos/${created.id}`, {
+      tagIds: [tagB.id, tagC.id],
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as TodoResponse;
+    expect(body.tags.map((tag) => tag.id).sort((a, b) => a - b)).toEqual(
+      [tagB.id, tagC.id].sort((a, b) => a - b),
+    );
+  });
+
+  it("leaves existing tag associations unchanged when tagIds is omitted", async () => {
+    const tag = await createTag({ name: "keep-me" });
+    const created = await createTodo({
+      title: "leave tags alone",
+      tagIds: [tag.id],
+    });
+
+    const res = await call("PATCH", `/api/todos/${created.id}`, {
+      title: "renamed",
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as TodoResponse;
+    expect(body.tags.map((tag) => tag.id)).toEqual([tag.id]);
+  });
+
+  it("clears all tag associations when tagIds is explicitly an empty array", async () => {
+    const tag = await createTag({ name: "remove-me" });
+    const created = await createTodo({
+      title: "clear tags",
+      tagIds: [tag.id],
+    });
+
+    const res = await call("PATCH", `/api/todos/${created.id}`, {
+      tagIds: [],
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as TodoResponse;
+    expect(body.tags).toEqual([]);
+  });
+
+  it("rejects tagIds that do not exist on update and leaves the todo entirely unchanged", async () => {
+    const created = await createTodo({ title: "original title" });
+
+    const res = await call("PATCH", `/api/todos/${created.id}`, {
+      title: "should not apply",
+      tagIds: [999999],
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorResponse;
+    expect(body.error).toBe("One or more tagIds do not exist");
+
+    const getRes = await call("GET", `/api/todos/${created.id}`);
+    const getBody = (await getRes.json()) as TodoResponse;
+    expect(getBody.title).toBe("original title");
+  });
 });
 
 describe("DELETE /api/todos/:id", () => {
@@ -352,4 +522,139 @@ describe("DELETE /api/todos/:id", () => {
     const getRes = await call("GET", `/api/todos/${created.id}`);
     expect(getRes.status).toBe(404);
   });
+});
+
+describe("POST /api/tags", () => {
+  it("creates a tag with a 1-character name", async () => {
+    const res = await call("POST", "/api/tags", { name: "a" });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as TagResponse;
+    expect(body.name).toBe("a");
+    expect(typeof body.id).toBe("number");
+  });
+
+  it("creates a tag with a 50-character name", async () => {
+    const res = await call("POST", "/api/tags", { name: "a".repeat(50) });
+
+    expect(res.status).toBe(201);
+  });
+
+  it("rejects an empty name", async () => {
+    const res = await call("POST", "/api/tags", { name: "" });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorResponse;
+    expect(body.error).toBe("Validation failed");
+    expect(body.details).toBeDefined();
+  });
+
+  it("rejects a 51-character name", async () => {
+    const res = await call("POST", "/api/tags", { name: "a".repeat(51) });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects a name that duplicates an existing tag", async () => {
+    await createTag({ name: "work" });
+
+    const res = await call("POST", "/api/tags", { name: "work" });
+
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as ErrorResponse;
+    expect(body.error).toBe("Tag name already exists");
+  });
+});
+
+describe("GET /api/tags", () => {
+  it("returns an empty array when no tags exist", async () => {
+    const res = await call("GET", "/api/tags");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
+  });
+
+  it("returns all tags ordered by id ascending", async () => {
+    const first = await createTag({ name: "first" });
+    const second = await createTag({ name: "second" });
+
+    const res = await call("GET", "/api/tags");
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as TagResponse[];
+    expect(body.map((tag) => tag.id)).toEqual([first.id, second.id]);
+  });
+});
+
+describe("PATCH /api/tags/:id", () => {
+  it("renames a tag", async () => {
+    const created = await createTag({ name: "old-name" });
+
+    const res = await call("PATCH", `/api/tags/${created.id}`, {
+      name: "new-name",
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as TagResponse;
+    expect(body.name).toBe("new-name");
+  });
+
+  it("allows renaming to the tag's own current name", async () => {
+    const created = await createTag({ name: "same-name" });
+
+    const res = await call("PATCH", `/api/tags/${created.id}`, {
+      name: "same-name",
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as TagResponse;
+    expect(body.name).toBe("same-name");
+  });
+
+  it("rejects a rename that duplicates a different existing tag", async () => {
+    await createTag({ name: "taken" });
+    const created = await createTag({ name: "mine" });
+
+    const res = await call("PATCH", `/api/tags/${created.id}`, {
+      name: "taken",
+    });
+
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as ErrorResponse;
+    expect(body.error).toBe("Tag name already exists");
+  });
+
+  it("returns 404 for a non-existent id", async () => {
+    const res = await call("PATCH", "/api/tags/999999", { name: "x" });
+
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as ErrorResponse;
+    expect(body.error).toBe("Tag not found");
+  });
+});
+
+describe("DELETE /api/tags/:id", () => {
+  it("deletes a tag, returning 204, and a subsequent GET list no longer includes it", async () => {
+    const created = await createTag({ name: "to delete" });
+
+    const res = await call("DELETE", `/api/tags/${created.id}`);
+    expect(res.status).toBe(204);
+    expect(await res.text()).toBe("");
+
+    const listRes = await call("GET", "/api/tags");
+    const body = (await listRes.json()) as TagResponse[];
+    expect(body.map((tag) => tag.id)).not.toContain(created.id);
+  });
+
+  it("returns 404 for a non-existent id", async () => {
+    const res = await call("DELETE", "/api/tags/999999");
+
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as ErrorResponse;
+    expect(body.error).toBe("Tag not found");
+  });
+
+  // Cascade-into-TodoResponse.tags is verified in the "GET /api/todos/:id"
+  // describe block below, once tagIds support (T5/T7) makes `tags` meaningful
+  // on that response (see worklog: T4/T7 ordering note).
 });

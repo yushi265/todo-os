@@ -18,6 +18,7 @@ function makeTodo(overrides: Partial<TodoResponse>): TodoResponse {
     sortOrder: 0,
     createdAt: "2026-08-01T00:00:00.000Z",
     updatedAt: "2026-08-01T00:00:00.000Z",
+    tags: [],
     ...overrides,
   };
 }

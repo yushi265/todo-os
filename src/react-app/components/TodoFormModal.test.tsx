@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TodoFormModal from "./TodoFormModal";
 import { jsonResponse, renderWithQueryClient } from "../test-utils";
-import type { TodoResponse } from "../../shared/types";
+import type { TagResponse, TodoResponse } from "../../shared/types";
 
 function makeTodo(overrides: Partial<TodoResponse> = {}): TodoResponse {
   return {
@@ -14,6 +14,17 @@ function makeTodo(overrides: Partial<TodoResponse> = {}): TodoResponse {
     priority: "HIGH",
     dueDate: "2026-09-01",
     sortOrder: 0,
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
+    tags: [],
+    ...overrides,
+  };
+}
+
+function makeTag(overrides: Partial<TagResponse> = {}): TagResponse {
+  return {
+    id: 1,
+    name: "タグ1",
     createdAt: "2026-08-01T00:00:00.000Z",
     updatedAt: "2026-08-01T00:00:00.000Z",
     ...overrides,
@@ -32,13 +43,24 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/**
+ * TodoFormModal は TagMultiSelect を内包し、レンダリング時に必ず GET /api/tags も呼ぶ。
+ * URL で振り分け、/api/tags は指定の tags を、それ以外（/api/todos 系）は指定のレスポンスを返す。
+ */
+function mockFetch(makeTodoResponse: () => Response, tags: TagResponse[] = []) {
+  fetchMock.mockImplementation((url: string) => {
+    if (url === "/api/tags") {
+      return Promise.resolve(jsonResponse(tags));
+    }
+    return Promise.resolve(makeTodoResponse());
+  });
+}
+
 describe("TodoFormModal", () => {
   // [代表値] タイトル入力＋送信 → 作成 mutation が呼ばれる
   it("calls the create mutation when title is filled and submitted", async () => {
     const user = userEvent.setup();
-    fetchMock.mockResolvedValue(
-      jsonResponse(makeTodo({ title: "新規タスク" }), 201),
-    );
+    mockFetch(() => jsonResponse(makeTodo({ title: "新規タスク" }), 201));
 
     renderWithQueryClient(
       <TodoFormModal
@@ -62,6 +84,7 @@ describe("TodoFormModal", () => {
             description: null,
             priority: null,
             dueDate: null,
+            tagIds: [],
           }),
         }),
       );
@@ -71,6 +94,7 @@ describe("TodoFormModal", () => {
   // [境界値] タイトル空文字で送信 → クライアント側バリデーションでエラー表示、mutation は呼ばれない
   it("shows a validation error and does not call the mutation when title is empty", async () => {
     const user = userEvent.setup();
+    mockFetch(() => jsonResponse(null, 200));
 
     renderWithQueryClient(
       <TodoFormModal
@@ -86,14 +110,14 @@ describe("TodoFormModal", () => {
     expect(
       await screen.findByText("タイトルは1〜200文字で入力してください"),
     ).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/todos", expect.anything());
   });
 
   // [代表値] 編集モードでの送信は update mutation を呼ぶ（AC-5）
   it("calls the update mutation when submitted in edit mode", async () => {
     const user = userEvent.setup();
     const todo = makeTodo();
-    fetchMock.mockResolvedValue(jsonResponse(todo, 200));
+    mockFetch(() => jsonResponse(todo, 200));
 
     renderWithQueryClient(
       <TodoFormModal
@@ -118,6 +142,7 @@ describe("TodoFormModal", () => {
   it("shows a validation error and does not call the update mutation when title is cleared in edit mode", async () => {
     const user = userEvent.setup();
     const todo = makeTodo();
+    mockFetch(() => jsonResponse(null, 200));
 
     renderWithQueryClient(
       <TodoFormModal
@@ -134,14 +159,17 @@ describe("TodoFormModal", () => {
     expect(
       await screen.findByText("タイトルは1〜200文字で入力してください"),
     ).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/todos/42",
+      expect.anything(),
+    );
   });
 
   // [代表値] 更新対象が既に存在しない場合は onNotFound を呼びモーダルを閉じる（AC-9）
   it("calls onNotFound and closes when the update target no longer exists (404)", async () => {
     const user = userEvent.setup();
     const todo = makeTodo();
-    fetchMock.mockResolvedValue(jsonResponse({ error: "Todo not found" }, 404));
+    mockFetch(() => jsonResponse({ error: "Todo not found" }, 404));
     const onClose = vi.fn();
     const onNotFound = vi.fn();
 
@@ -165,6 +193,7 @@ describe("TodoFormModal", () => {
   // [代表値] 編集モードで開くと既存値がフォームに初期表示される
   it("pre-fills the form with the existing todo values in edit mode", () => {
     const todo = makeTodo();
+    mockFetch(() => jsonResponse(todo, 200));
 
     renderWithQueryClient(
       <TodoFormModal
@@ -180,5 +209,65 @@ describe("TodoFormModal", () => {
     expect(screen.getByLabelText("優先度")).toHaveValue(todo.priority);
     expect(screen.getByLabelText("期限")).toHaveValue(todo.dueDate);
     expect(screen.getByLabelText("ステータス")).toHaveValue(todo.status);
+  });
+
+  // [代表値] TagMultiSelect で選択したタグが送信時に tagIds として渡る
+  it("includes the selected tag ids as tagIds when submitted", async () => {
+    const user = userEvent.setup();
+    const tag = makeTag({ id: 5, name: "仕事" });
+    mockFetch(
+      () => jsonResponse(makeTodo({ title: "新規タスク" }), 201),
+      [tag],
+    );
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit={false}
+        todo={null}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("タイトル"), "新規タスク");
+    await user.click(await screen.findByRole("button", { name: "仕事" }));
+    await user.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/todos",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            title: "新規タスク",
+            description: null,
+            priority: null,
+            dueDate: null,
+            tagIds: [5],
+          }),
+        }),
+      );
+    });
+  });
+
+  // [代表値] 編集モードで開くと、TODO に既に付与されているタグが選択済み状態で初期表示される
+  it("pre-selects the todo's existing tags when opened in edit mode", async () => {
+    const tag = makeTag({ id: 5, name: "仕事" });
+    const todo = makeTodo({ tags: [tag] });
+    mockFetch(() => jsonResponse(todo, 200), [tag]);
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit={true}
+        todo={todo}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByRole("button", { name: "仕事" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 });

@@ -1,10 +1,12 @@
 import { Hono } from "hono";
 import todosRoute from "./routes/todos";
+import tagsRoute from "./routes/tags";
 import type { ErrorResponse } from "../shared/types";
 
 const app = new Hono<{ Bindings: Env }>();
 
 app.route("/api/todos", todosRoute);
+app.route("/api/tags", tagsRoute);
 
 app.onError((err, c) => {
   console.error(err);

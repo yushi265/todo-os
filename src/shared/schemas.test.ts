@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createTodoSchema, updateTodoSchema } from "./schemas";
+import {
+  createTagSchema,
+  createTodoSchema,
+  updateTagSchema,
+  updateTodoSchema,
+} from "./schemas";
 
 describe("createTodoSchema", () => {
   it("accepts a title with exactly 1 character", () => {
@@ -96,5 +101,101 @@ describe("updateTodoSchema", () => {
       expect("description" in omitted.data).toBe(false);
       expect(explicitNull.data.description).toBeNull();
     }
+  });
+});
+
+describe("createTodoSchema tagIds", () => {
+  it("accepts an array of positive integer tagIds", () => {
+    const result = createTodoSchema.safeParse({
+      title: "x",
+      tagIds: [1, 2, 3],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts an explicit empty tagIds array", () => {
+    expect(createTodoSchema.safeParse({ title: "x", tagIds: [] }).success).toBe(
+      true,
+    );
+  });
+
+  it("rejects a non-positive tagId", () => {
+    expect(
+      createTodoSchema.safeParse({ title: "x", tagIds: [0] }).success,
+    ).toBe(false);
+  });
+
+  it("omits tagIds from the parsed result when not provided", () => {
+    const result = createTodoSchema.safeParse({ title: "x" });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect("tagIds" in result.data).toBe(false);
+    }
+  });
+});
+
+describe("updateTodoSchema tagIds", () => {
+  it("accepts an array of positive integer tagIds", () => {
+    expect(updateTodoSchema.safeParse({ tagIds: [1, 2] }).success).toBe(true);
+  });
+
+  it("accepts an explicit empty tagIds array", () => {
+    expect(updateTodoSchema.safeParse({ tagIds: [] }).success).toBe(true);
+  });
+
+  it("rejects a non-positive tagId", () => {
+    expect(updateTodoSchema.safeParse({ tagIds: [-1] }).success).toBe(false);
+  });
+
+  it("omits tagIds from the parsed result when not provided", () => {
+    const result = updateTodoSchema.safeParse({});
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect("tagIds" in result.data).toBe(false);
+    }
+  });
+});
+
+describe("createTagSchema", () => {
+  it("accepts a name with exactly 1 character", () => {
+    expect(createTagSchema.safeParse({ name: "a" }).success).toBe(true);
+  });
+
+  it("accepts a name with exactly 50 characters", () => {
+    expect(createTagSchema.safeParse({ name: "a".repeat(50) }).success).toBe(
+      true,
+    );
+  });
+
+  it("rejects an empty name", () => {
+    expect(createTagSchema.safeParse({ name: "" }).success).toBe(false);
+  });
+
+  it("rejects a name with 51 characters", () => {
+    expect(createTagSchema.safeParse({ name: "a".repeat(51) }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("updateTagSchema", () => {
+  it("accepts a name with exactly 1 character", () => {
+    expect(updateTagSchema.safeParse({ name: "a" }).success).toBe(true);
+  });
+
+  it("rejects an empty name", () => {
+    expect(updateTagSchema.safeParse({ name: "" }).success).toBe(false);
+  });
+
+  it("rejects a name with 51 characters", () => {
+    expect(updateTagSchema.safeParse({ name: "a".repeat(51) }).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects a missing name", () => {
+    expect(updateTagSchema.safeParse({}).success).toBe(false);
   });
 });
