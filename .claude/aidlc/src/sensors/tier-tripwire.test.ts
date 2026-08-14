@@ -74,9 +74,10 @@ test("実 tier-triggers.json が読めて db-schema トリガーを含む（較�
   );
   const ids = data.triggers.map((t) => t.id);
   assert.ok(ids.includes("db-schema"));
-  // 実データで勧告が出ることの較正（ミラーの regex が有効であること）
+  // 実データで勧告が出ることの較正（ミラーの regex が有効であること）。
+  // todo-os の db-schema トリガーは drizzle/** を対象にする（drizzle-kit の出力先）。
   const findings = checkTierTripwire(
-    "service/db/migrations/0001_init.sql",
+    "drizzle/0001_init.sql",
     ["CREATE TABLE items (id uuid);"],
     2,
     data.triggers,

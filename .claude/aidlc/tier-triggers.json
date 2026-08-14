@@ -5,9 +5,27 @@
   "triggers": [
     {
       "id": "db-schema",
-      "glob": "**/migrations/**",
+      "glob": "drizzle/**",
       "contentPattern": "CREATE TABLE|ALTER TABLE|DROP TABLE",
-      "$comment": "例: DB スキーマ変更（マイグレーション）。glob をプロジェクトのマイグレーション配置に合わせる。DDL を持たないプロジェクトは削除してよい。他の高リスク要素（認証・認可 / データ境界 / 公開 API 等）を検出したいトリガーは、glob + contentPattern を足してここに追加する"
+      "$comment": "drizzle-kit が生成する D1 マイグレーション SQL（todos/tags/todo_tags のテーブル定義変更）"
+    },
+    {
+      "id": "db-schema",
+      "glob": "src/db/schema.ts",
+      "contentPattern": ".+",
+      "$comment": "Drizzle スキーマ定義そのもの。ファイル全体が保護対象（追加行の存在だけで昇格判定）"
+    },
+    {
+      "id": "api-routing",
+      "glob": "src/worker/**",
+      "contentPattern": "app\\.(get|post|patch|put|delete)\\(",
+      "$comment": "Hono API のルーティング定義（エンドポイント追加・削除・シグネチャ変更 = レイヤー間 IF 契約）"
+    },
+    {
+      "id": "infra-config",
+      "glob": "wrangler.jsonc",
+      "contentPattern": ".+",
+      "$comment": "D1 バインディング・Cloudflare Access 経路に関わるインフラ設定。ファイル全体が保護対象"
     }
   ]
 }

@@ -1,49 +1,54 @@
 # アーキテクチャ概要
 
-**このプロジェクトのアーキテクチャをここに記述する。** 実装者が依存方向と責務を素早く把握するための全体像を示す。
-以下は AI-DLC ハーネスに付属する**汎用テンプレート**（例として汎用の 3 層 `data ← service ← ui` を示す）。
-プロジェクトのレイヤー数・名前・技術に置き換える。**単一レイヤーのプロジェクト（CLI・ライブラリ等）もある。**
+個人用 TODO 管理アプリ。React SPA（`ui`）と Hono API（`service`。Drizzle ORM + D1 によるデータ永続化を含む）を、
+単一の Cloudflare Worker として `@cloudflare/vite-plugin` でビルド・デプロイする一体型構成。詳細な機能要件は
+[REQUIREMENTS.md](../REQUIREMENTS.md) を参照。
 
 ## 全体像
 
 ```
-利用者（UI クライアント・CLI・別サービス等）
-  └─ ui/       表示層     … 入力受付・描画（該当する場合）
-        │  レイヤー間 IF（プロジェクトが定義）
-  └─ service/  サービス層 … ドメインロジック・データアクセス
-        │
-  └─ data/     データ層   … 永続化
+利用者（ブラウザ・PC / スマートフォン）
+  │
+  ▼
+Cloudflare Access（認証。指定メールアドレス + One-time PIN。ダッシュボード側で完結・アプリコードは関与しない）
+  │
+  ▼
+Cloudflare Worker（単一プロセス）
+  ├─ src/react-app/   ui      … React SPA（画面・入力受付）
+  │       │  fetch("/api/...")
+  ├─ src/worker/       service … Hono API（ルーティング・ドメインロジック）
+  └─ src/db/           service（data を統合） … Drizzle ORM スキーマ定義
+          │
+          ▼
+      Cloudflare D1（SQLite）
 ```
 
-> これは汎用の 3 層例。レイヤーの数・名前・技術・境界はプロジェクトが定義する。
+- ビルド成果物は `dist/client/`（静的アセット・SPA）と `dist/todo_os/`（Worker 本体）の 2 系統（`@cloudflare/vite-plugin` の既定出力）。
+- ローカル検証は `pnpm dev`（Vite dev server、フロント + API 一体で起動）と `wrangler d1 migrations apply --local`（ローカル D1、Cloudflare アカウント接続不要）で完結する。
 
-| レイヤー（例） | 責務（例） |
-|--------------|-----------|
-| ui（表示層） | UI 描画・入力受付。ドメインロジックを持たない |
-| service（サービス層） | ドメインロジック・データアクセス・外部連携 |
-| data（データ層） | 永続化。スキーマ・アクセス制御 |
+## レイヤー責務
 
-<各レイヤーの技術スタック・主な責務をプロジェクトの実体に置き換えて記述する>
+| レイヤー | 配置 | 責務 |
+|--------|------|------|
+| ui（表示層） | `src/react-app/` | 画面描画・入力受付・TanStack Query によるサーバー状態管理。ドメインロジックを持たない |
+| service（サービス層・data 統合） | `src/worker/`（API）＋ `src/db/`（Drizzle スキーマ） | Hono ルーティング・入力検証（Zod）・ドメインロジック・D1 へのデータアクセス |
 
-## 依存方向（プロジェクトが定義）
+- `data` 層は独立させず `service` に統合している（Hono と Drizzle/D1 が同一 Workers プロセス・同一 `@cloudflare/vitest-pool-workers` テストで検証されるため。検証コマンドの単位は [referee.config.json](../.claude/aidlc/referee.config.json)）。
+- レイヤー別 spec は `service.md` / `ui.md` の 2 ファイル構成（[_layer.md](./spec/_TEMPLATE/_layer.md)）。
+
+## 依存方向
 
 ```
-ui  →  service  →  data
+ui（src/react-app）  →  service（src/worker, src/db）  →  D1
 ```
 
-- 例: 逆方向の依存（下位レイヤーが上位を知る等）を禁止し、上位レイヤーは最下位を直接呼ばず中間レイヤーを経由する。
-- レイヤー境界・依存方向の具体ルールが要るプロジェクトは、`.claude/rules/` に境界規約を追加する（この AI-DLC ハーネスには設計規約を同梱しない）。
+- `ui` は HTTP（`fetch("/api/...")`）経由でのみ `service` を呼ぶ。Worker のモジュールを直接 import しない。
+- `service` 内部でも `src/worker/`（API）→ `src/db/`（スキーマ）の一方向。`src/db/` は Hono に依存しない。
 
-## モジュール構造（該当する場合）
+## モジュール構造
 
-サービス層をドメイン別モジュール（Bounded Context。用語は [glossary.md](./ai-dlc/glossary.md)）に分割する場合、
-その境界と依存方向（DAG）をここに記す。モジュール間の参照は公開インターフェース経由のみとし、内部実装への直接依存・
-モジュールまたぎのデータ結合を禁止する（境界の強制方法はプロジェクトで定義）。詳細は各サブツリー / モジュールの docs（プロジェクトで用意）。
+該当なし（単一 Bounded Context。ドメイン別モジュール分割は行わない）。
 
 ## サブツリー / モジュールの入口
 
-> プロジェクトがサブツリー分割する場合、各入口をここに書く（分割しないなら省略）。
-
-| サブツリー / モジュール（例） | 入口（例） |
-|------------------------------|-----------|
-| <subtree A> | `<subtree>/CLAUDE.md` / `<subtree>/docs/` |
+該当なし（単一パッケージ構成。サブツリー分割なし）。

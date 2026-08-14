@@ -3,16 +3,16 @@
 // （見出し・記法の存在検査に限る。節の中身の意味的充足はレビュアー / 人間の守備範囲）。
 // index.md: AC 番号・テスト戦略・対象外 / レイヤー .md: 担保 AC・テストケース・異常系 /
 // 表示層（ui.md）: レスポンシブ節。_TEMPLATE / progress.md / questions.md は対象外。
-// LAYER_FILES と表示層ファイル名はスタック非依存の例（data/service/ui）。プロジェクトの
-// レイヤー構成（spec/_TEMPLATE のレイヤー別ファイル名）に合わせて調整する。
+// LAYER_FILES と表示層ファイル名は todo-os のレイヤー構成（service/ui の2層。
+// data 層は Hono API と同一 Workers プロセスで検証するため service に統合）に合わせて設定済み。
 
 export interface SpecSectionFinding {
   rule: "spec-sections";
   message: string;
 }
 
-// プロジェクトのレイヤー別 spec ファイル名。例は data（永続層）/ service（ロジック層）/ ui（表示層）。
-const LAYER_FILES = new Set(["data.md", "service.md", "ui.md"]);
+// プロジェクトのレイヤー別 spec ファイル名。service（Hono API + Drizzle/D1）/ ui（React）。
+const LAYER_FILES = new Set(["service.md", "ui.md"]);
 // レスポンシブ / アクセシビリティ節を要求する表示層ファイル（UI を持たないプロジェクトでは該当なし）。
 // 表示層が複数あるプロジェクト（例: プラグイン UI + ブラウザ webapp）はここに全て列挙する。
 const UI_LAYER_FILES = new Set(["ui.md"]);

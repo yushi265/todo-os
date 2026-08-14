@@ -1,7 +1,7 @@
 # <TICKET>: <レイヤー名> 詳細設計
 
 > **レイヤー別 spec の汎用雛形**。この `_layer.md` を雛形に、関与するレイヤーごとに `<layer>.md` を作る
-> （例: `data.md` / `service.md` / `ui.md`。レイヤー名・粒度はプロジェクトが [architecture.md](../../architecture.md) で定義する）。
+> （todo-os は `service.md`（Hono API + Drizzle/D1。data 層を統合）/ `ui.md`（React）の2層。詳細は [architecture.md](../../architecture.md)）。
 > **そのレイヤーが関与しない場合はファイルを作らない**。単一レイヤーで完結する変更（CLI・ライブラリ等）なら 1 ファイルでよい。
 > 規約: プロジェクトの当該レイヤーの規約 docs（あれば）に従う。
 

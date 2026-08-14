@@ -93,6 +93,8 @@ test("drift: tier-triggers.json の各トリガーが risk-tiers.md の Tier 1 �
   // プロジェクトが tier-triggers.json を書き換えたら、ここも正本（risk-tiers.md）の文言に合わせる。
   const vocabulary: Record<string, string[]> = {
     "db-schema": ["データスキーマ", "スキーマ"],
+    "api-routing": ["レイヤー間インターフェース"],
+    "infra-config": ["インフラ設定"],
   };
   for (const trigger of triggers.triggers) {
     const words = vocabulary[trigger.id];
