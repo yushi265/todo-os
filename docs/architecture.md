@@ -16,6 +16,7 @@ Cloudflare Access（認証。指定メールアドレス + One-time PIN。ダッ
 Cloudflare Worker（単一プロセス）
   ├─ src/react-app/   ui      … React SPA（画面・入力受付）
   │       │  fetch("/api/...")
+  │       │  ← src/shared/ … service/ui 共有契約（Zod スキーマ・型）を両側から import
   ├─ src/worker/       service … Hono API（ルーティング・ドメインロジック）
   └─ src/db/           service（data を統合） … Drizzle ORM スキーマ定義
           │
@@ -34,6 +35,7 @@ Cloudflare Worker（単一プロセス）
 | service（サービス層・data 統合） | `src/worker/`（API）＋ `src/db/`（Drizzle スキーマ） | Hono ルーティング・入力検証（Zod）・ドメインロジック・D1 へのデータアクセス |
 
 - `data` 層は独立させず `service` に統合している（Hono と Drizzle/D1 が同一 Workers プロセス・同一 `@cloudflare/vitest-pool-workers` テストで検証されるため。検証コマンドの単位は [referee.config.json](../.claude/aidlc/referee.config.json)）。
+- `src/shared/`（Zod スキーマ・レスポンス型）は service と ui の両方から import される共有契約。どちらのレイヤーにも属さず、依存方向の起点にはならない（`src/shared/` 自体は他レイヤーに依存しない）。
 - レイヤー別 spec は `service.md` / `ui.md` の 2 ファイル構成（[_layer.md](./spec/_TEMPLATE/_layer.md)）。
 
 ## 依存方向

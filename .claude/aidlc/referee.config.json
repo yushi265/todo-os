@@ -4,14 +4,14 @@
     "service": {
       "cwd": ".",
       "precondition": "node_modules",
-      "command": ["sh", "-c", "pnpm typecheck && pnpm test"],
-      "$comment": "Hono API + Drizzle ORM + D1（data 層を含む）。型チェック（tsc -b、全レイヤー分を一括）と @cloudflare/vitest-pool-workers によるテスト（D1 マイグレーション適用込み）"
+      "command": ["sh", "-c", "pnpm typecheck && pnpm test:service"],
+      "$comment": "Hono API + Drizzle ORM + D1（data 層を含む）。型チェック（tsc -b、全レイヤー分を一括）と @cloudflare/vitest-pool-workers によるテスト（D1 マイグレーション適用込み・vitest --project service で絞り込み）"
     },
     "ui": {
       "cwd": ".",
       "precondition": "node_modules",
-      "command": ["pnpm", "typecheck"],
-      "$comment": "React SPA。コンポーネントテストは未整備（現状 service 側の pnpm typecheck と重複実行になるが、UI 単体テスト追加時にこの command へ合流させる）"
+      "command": ["sh", "-c", "pnpm typecheck && pnpm test:ui"],
+      "$comment": "React SPA。jsdom 環境（vitest --project ui）で React Testing Library によるコンポーネントテストを実行する"
     }
   },
   "post": {

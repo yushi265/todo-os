@@ -12,7 +12,8 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "moduleDetection": "force",
-    "noEmit": true
+    "noEmit": true,
+    "types": ["@testing-library/jest-dom"]
   },
-  "include": ["src/react-app"]
+  "include": ["src/react-app", "src/shared", "test/setup-ui.ts"]
 }

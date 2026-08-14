@@ -1,0 +1,96 @@
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
+import TodoListItem from "./TodoListItem";
+import type { TodoResponse } from "../../shared/types";
+
+afterEach(() => {
+  cleanup();
+});
+
+function makeTodo(overrides: Partial<TodoResponse>): TodoResponse {
+  return {
+    id: 1,
+    title: "サンプル",
+    description: null,
+    status: "TODO",
+    priority: null,
+    dueDate: null,
+    sortOrder: 0,
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+describe("TodoListItem", () => {
+  // [代表値] 行クリックで onClick(todo) が正しい todo で呼ばれる
+  it("calls onClick with the todo when the row is clicked", async () => {
+    const todo = makeTodo({ id: 42, title: "編集対象" });
+    const onClick = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <ul>
+        <TodoListItem todo={todo} onClick={onClick} onDeleteClick={vi.fn()} />
+      </ul>,
+    );
+    await user.click(screen.getByText("編集対象"));
+
+    expect(onClick).toHaveBeenCalledWith(todo);
+  });
+
+  // [代表値] 削除ボタンクリックで onDeleteClick(todo) が呼ばれ、onClick は呼ばれない
+  it("calls onDeleteClick without triggering onClick when the delete button is clicked", async () => {
+    const todo = makeTodo({ id: 7, title: "削除対象" });
+    const onClick = vi.fn();
+    const onDeleteClick = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={todo}
+          onClick={onClick}
+          onDeleteClick={onDeleteClick}
+        />
+      </ul>,
+    );
+    await user.click(screen.getByLabelText(`「${todo.title}」を削除`));
+
+    expect(onDeleteClick).toHaveBeenCalledWith(todo);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  // [代表値] ステータス・優先度・期限が表示される
+  it("displays status, priority and due date labels", () => {
+    const todo = makeTodo({
+      status: "IN_PROGRESS",
+      priority: "HIGH",
+      dueDate: "2026-08-20",
+    });
+
+    render(
+      <ul>
+        <TodoListItem todo={todo} onClick={vi.fn()} onDeleteClick={vi.fn()} />
+      </ul>,
+    );
+
+    expect(screen.getByText("進行中")).toBeInTheDocument();
+    expect(screen.getByText("高")).toBeInTheDocument();
+    expect(screen.getByText("2026-08-20")).toBeInTheDocument();
+  });
+
+  // [境界値] 優先度未設定は "-" 表示
+  it("displays a dash when priority is not set", () => {
+    const todo = makeTodo({ priority: null });
+
+    render(
+      <ul>
+        <TodoListItem todo={todo} onClick={vi.fn()} onDeleteClick={vi.fn()} />
+      </ul>,
+    );
+
+    expect(screen.getAllByText("-")).toHaveLength(2); // priority と dueDate の両方が未設定
+  });
+});

@@ -1,19 +1,17 @@
 import { Hono } from "hono";
-import { drizzle } from "drizzle-orm/d1";
-import { todos } from "../db/schema";
-
-export interface Env {
-  DB: D1Database;
-}
+import todosRoute from "./routes/todos";
+import type { ErrorResponse } from "../shared/types";
 
 const app = new Hono<{ Bindings: Env }>();
 
-app.get("/api/health", (c) => c.json({ status: "ok" }));
+app.route("/api/todos", todosRoute);
 
-app.get("/api/todos", async (c) => {
-  const db = drizzle(c.env.DB);
-  const result = await db.select().from(todos).all();
-  return c.json(result);
+app.onError((err, c) => {
+  console.error(err);
+  return c.json(
+    { error: "Internal server error" } satisfies ErrorResponse,
+    500,
+  );
 });
 
 export default app;

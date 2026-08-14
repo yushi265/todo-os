@@ -5,7 +5,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".wrangler", "drizzle", ".claude"] },
+  { ignores: ["dist", ".wrangler", "drizzle", ".claude", "coverage"] },
   {
     files: ["src/react-app/**/*.{ts,tsx}"],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
@@ -26,7 +26,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/worker/**/*.ts", "src/db/**/*.ts", "test/**/*.ts"],
+    files: [
+      "src/worker/**/*.ts",
+      "src/db/**/*.ts",
+      "src/shared/**/*.ts",
+      "test/**/*.ts",
+    ],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: 2022,
