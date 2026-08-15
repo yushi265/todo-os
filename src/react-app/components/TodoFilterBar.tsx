@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { TagResponse, TodoPriority, TodoStatus } from "../../shared/types";
 import { PRIORITY_LABEL_CLASSES, STATUS_LABEL } from "../lib/statusStyles";
 import type { SortBy, TodoFilters } from "../hooks/useTodos";
+import Button from "./ui/button";
 
 type FilterAttribute = keyof TodoFilters;
 
@@ -222,27 +223,33 @@ function TodoFilterBar({
               key={attribute}
               className="inline-flex min-h-11 items-center rounded-full border border-chip-border bg-chip-bg text-sm font-medium text-chip-fg sm:text-xs"
             >
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 type="button"
                 onClick={() => openValueMenu(attribute)}
-                className="min-h-11 rounded-l-full px-3 py-1 sm:px-2.5 hover:bg-chip-border"
+                className="min-h-11 rounded-l-full rounded-r-none px-3 py-1 hover:bg-chip-border sm:px-2.5"
               >
                 {FILTER_ATTRIBUTE_LABELS[attribute]}:{" "}
                 {filterValueLabel(attribute, value, tags)}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 type="button"
                 aria-label="フィルターを削除"
                 onClick={() => handleFilterRemove(attribute)}
                 className="min-h-11 min-w-11 rounded-r-full px-2 text-chip-fg hover:bg-chip-border"
               >
                 ×
-              </button>
+              </Button>
             </div>
           );
         })}
 
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           type="button"
           aria-label="フィルターを追加"
           aria-haspopup="menu"
@@ -253,7 +260,7 @@ function TodoFilterBar({
           className="min-h-11 rounded-full border border-dashed border-border bg-card px-3 py-2 text-sm text-text-secondary hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5 sm:py-1.5 sm:text-xs"
         >
           + フィルター
-        </button>
+        </Button>
 
         {isFilterMenuOpen && (
           <div
@@ -264,36 +271,42 @@ function TodoFilterBar({
           >
             {selectedAttribute === null ? (
               availableAttributes.map((attribute) => (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   key={attribute}
                   type="button"
                   role="menuitem"
                   onClick={() => setSelectedAttribute(attribute)}
-                  className="min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface sm:text-xs"
+                  className="min-h-11 w-full justify-start rounded-lg px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface sm:text-xs"
                 >
                   {FILTER_ATTRIBUTE_LABELS[attribute]}
-                </button>
+                </Button>
               ))
             ) : (
               <>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   role="menuitem"
                   onClick={openAttributeMenu}
-                  className="min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-text-tertiary hover:bg-surface sm:text-xs"
+                  className="min-h-11 w-full justify-start rounded-lg px-3 py-2 text-left text-sm text-text-tertiary hover:bg-surface sm:text-xs"
                 >
                   ← 属性を選び直す
-                </button>
+                </Button>
                 {getFilterOptions(selectedAttribute, tags).map((option) => (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     key={option.value}
                     type="button"
                     role="menuitem"
                     onClick={() => handleValueSelect(option.value)}
-                    className="min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface sm:text-xs"
+                    className="min-h-11 w-full justify-start rounded-lg px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface sm:text-xs"
                   >
                     {option.label}
-                  </button>
+                  </Button>
                 ))}
                 {selectedAttribute === "tagId" && tags.length === 0 && (
                   <p className="px-3 py-2 text-sm text-text-tertiary sm:text-xs">
@@ -302,13 +315,15 @@ function TodoFilterBar({
                 )}
               </>
             )}
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               type="button"
               onClick={closeFilterMenu}
-              className="mt-1 min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-text-tertiary hover:bg-surface sm:text-xs"
+              className="mt-1 min-h-11 w-full justify-start rounded-lg px-3 py-2 text-left text-sm text-text-tertiary hover:bg-surface sm:text-xs"
             >
               閉じる
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -339,7 +354,9 @@ function TodoFilterBar({
           ))}
         </select>
         {sortBy !== "manual" && (
-          <button
+          <Button
+            variant="outline"
+            size="icon"
             type="button"
             aria-label={
               sortOrder === "asc" ? "降順に切り替え" : "昇順に切り替え"
@@ -350,7 +367,7 @@ function TodoFilterBar({
             className="min-h-11 min-w-11 rounded-full border border-border bg-card px-3 py-2 text-lg text-text-secondary hover:bg-surface sm:px-2.5 sm:py-1.5 sm:text-base"
           >
             {sortOrder === "asc" ? "↑" : "↓"}
-          </button>
+          </Button>
         )}
       </div>
     </section>

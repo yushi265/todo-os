@@ -4,6 +4,7 @@ import { createTodoSchema, updateTodoSchema } from "../../shared/schemas";
 import type { TodoResponse, TodoStatus } from "../../shared/types";
 import { ApiError, useCreateTodo, useUpdateTodo } from "../hooks/useTodos";
 import TagMultiSelect from "./TagMultiSelect";
+import Button from "./ui/button";
 
 type PriorityValue = "" | "HIGH" | "MEDIUM" | "LOW";
 
@@ -21,6 +22,7 @@ interface TodoFormModalProps {
   todo: TodoResponse | null;
   onClose: () => void;
   onNotFound: () => void;
+  onUpdated?: (previous: TodoResponse, updated: TodoResponse) => void;
 }
 
 const STATUS_OPTIONS: { value: TodoStatus; label: string }[] = [
@@ -67,6 +69,7 @@ function TodoFormModal({
   todo,
   onClose,
   onNotFound,
+  onUpdated,
 }: TodoFormModalProps) {
   const [values, setValues] = useState<FormValues>(() => initialValues(todo));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -139,7 +142,13 @@ function TodoFormModal({
             tagIds: result.data.tagIds ?? [],
           },
         },
-        { onSuccess: onClose, onError: handleMutationError },
+        {
+          onSuccess: (updatedTodo) => {
+            onUpdated?.(todo, updatedTodo);
+            onClose();
+          },
+          onError: handleMutationError,
+        },
       );
       return;
     }
@@ -314,13 +323,15 @@ function TodoFormModal({
                 {/* ✓ 完了にする（AC-4）: フォーム内 state のみ変更し、送信（PATCH）は発火しない。
                     status が既に DONE の間は不要な操作のため非表示にする（自己非表示）。 */}
                 {values.status !== "DONE" && (
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     type="button"
                     onClick={() => setValues((v) => ({ ...v, status: "DONE" }))}
                     className="min-h-11 shrink-0 rounded-xl bg-status-done-bg px-3 text-sm font-medium text-status-done-fg hover:opacity-90 sm:text-xs"
                   >
                     ✓ 完了にする
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -333,20 +344,24 @@ function TodoFormModal({
           )}
 
           <div className="flex justify-end gap-2 pt-2 sm:gap-1.5">
-            <button
+            <Button
+              variant="ghost"
+              size="default"
               type="button"
               onClick={onClose}
               className="min-h-11 rounded-xl px-4 py-2 text-sm text-text-secondary hover:bg-surface sm:px-3 sm:py-1.5 sm:text-xs"
             >
               キャンセル
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="default"
+              size="default"
               type="submit"
               disabled={isSubmitting}
               className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white shadow-[0_4px_14px_rgba(0,0,0,0.12)] hover:bg-primary-hover disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-xs"
             >
               保存
-            </button>
+            </Button>
           </div>
         </form>
       </div>

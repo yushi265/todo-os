@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { createTodoSchema } from "../../shared/schemas";
 import { ApiError, useCreateTodo } from "../hooks/useTodos";
+import Button from "./ui/button";
 
 function QuickTodoInput() {
   const [title, setTitle] = useState("");
@@ -52,13 +53,14 @@ function QuickTodoInput() {
         aria-describedby={errorMessage ? "quick-todo-error" : undefined}
         className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary"
       />
-      <button
+      <Button
+        variant="default"
         type="submit"
         disabled={createMutation.isPending}
         className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white shadow-[0_4px_14px_rgba(0,0,0,0.12)] hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
         {createMutation.isPending ? "追加中…" : "追加"}
-      </button>
+      </Button>
       {errorMessage && (
         <p
           id="quick-todo-error"

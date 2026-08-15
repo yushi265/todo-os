@@ -144,13 +144,15 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
         {isError && (
           <div className="py-6 text-center">
             <p className="mb-4 text-danger">タグの取得に失敗しました</p>
-            <button
+            <Button
+              variant="outline"
+              size="default"
               type="button"
               onClick={() => refetch()}
               className="min-h-11 rounded-xl border border-border bg-card px-4 py-2 text-sm text-text-secondary hover:bg-surface sm:text-xs"
             >
               再試行
-            </button>
+            </Button>
           </div>
         )}
 
@@ -189,22 +191,26 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
                         <span className="flex-1 text-text-primary">
                           #{tag.name}
                         </span>
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           type="button"
                           aria-label={`「${tag.name}」を編集`}
                           onClick={() => startEdit(tag)}
                           className="min-h-11 min-w-11 rounded-xl px-2 text-sm text-text-tertiary hover:bg-surface sm:text-xs"
                         >
                           編集
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           type="button"
                           aria-label={`「${tag.name}」を削除`}
                           onClick={() => setDeleteTarget(tag)}
                           className="min-h-11 min-w-11 rounded-xl px-2 text-sm text-text-tertiary hover:bg-danger-bg hover:text-danger sm:text-xs"
                         >
                           削除
-                        </button>
+                        </Button>
                       </>
                     )}
                   </li>
@@ -269,14 +275,16 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
           className="fixed inset-x-0 bottom-4 mx-auto flex w-fit items-center gap-3 rounded-xl bg-text-primary px-4 py-3 text-white shadow-[0_12px_36px_rgba(0,0,0,0.32)] animate-[toast-in_0.18s_ease-out] sm:px-3 sm:py-2"
         >
           <span className="text-sm sm:text-xs">{toast}</span>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             type="button"
             aria-label="閉じる"
             onClick={() => setToast(null)}
-            className="min-h-11 min-w-11 text-white/80 hover:text-white"
+            className="min-h-11 min-w-11 rounded-lg bg-transparent p-0 text-white/80 hover:bg-white/10 hover:text-white"
           >
             ×
-          </button>
+          </Button>
         </div>
       )}
     </div>

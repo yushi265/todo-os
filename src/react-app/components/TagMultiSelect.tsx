@@ -5,6 +5,7 @@ import {
   useCreateTag,
   useTags,
 } from "../hooks/useTags";
+import Button from "./ui/button";
 
 interface TagMultiSelectProps {
   selectedTagIds: number[];
@@ -66,13 +67,15 @@ function TagMultiSelect({ selectedTagIds, onChange }: TagMultiSelectProps) {
           <p className="text-sm text-danger sm:text-xs">
             タグの取得に失敗しました
           </p>
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             type="button"
             onClick={() => refetch()}
             className="min-h-11 rounded-xl border border-border bg-card px-3 py-1 text-sm text-text-secondary hover:bg-surface sm:px-2.5 sm:py-1.5 sm:text-xs"
           >
             再試行
-          </button>
+          </Button>
         </div>
       )}
 
@@ -86,7 +89,9 @@ function TagMultiSelect({ selectedTagIds, onChange }: TagMultiSelectProps) {
           {tags.map((tag) => {
             const selected = selectedTagIds.includes(tag.id);
             return (
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
                 key={tag.id}
                 type="button"
                 aria-pressed={selected}
@@ -98,7 +103,7 @@ function TagMultiSelect({ selectedTagIds, onChange }: TagMultiSelectProps) {
                 }
               >
                 #{tag.name}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -120,14 +125,16 @@ function TagMultiSelect({ selectedTagIds, onChange }: TagMultiSelectProps) {
             onChange={(e) => setNewTagName(e.target.value)}
             className="min-h-11 flex-1 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:px-2.5 sm:py-1.5 sm:text-xs"
           />
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             type="button"
             onClick={handleCreate}
             disabled={createMutation.isPending}
             className="min-h-11 rounded-xl border border-border bg-card px-3 py-1 text-sm text-text-secondary hover:bg-surface disabled:opacity-50 sm:px-2.5 sm:py-1.5 sm:text-xs"
           >
             追加
-          </button>
+          </Button>
         </div>
         {error && (
           <p role="alert" className="text-sm text-danger sm:text-xs">
