@@ -153,6 +153,25 @@ describe("TodoListItem", () => {
     expect(onClick).toHaveBeenCalledWith(todo);
   });
 
+  // [代表値] タイトルボタンはタッチターゲット最小44pxを維持する
+  it("keeps a 44px minimum touch target on the title button", () => {
+    const todo = makeTodo({ title: "タップ領域確認" });
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
+      </ul>,
+    );
+
+    const titleButton = screen.getByText("タップ領域確認").closest("button");
+    expect(titleButton).toHaveClass("min-h-11");
+  });
+
   // [代表値] 削除ボタンクリックで onDeleteClick(todo) が呼ばれ、onClick は呼ばれない
   it("calls onDeleteClick without triggering onClick when the delete button is clicked", async () => {
     const todo = makeTodo({ id: 7, title: "削除対象" });
@@ -307,6 +326,34 @@ describe("TodoListItem", () => {
     );
 
     expect(onClick).not.toHaveBeenCalled();
+  });
+
+  // [代表値] ステータスバッジはタイトル直下の2段目に配置され、優先度・期限と同じ行に並ぶ（Claude Designのカード構造準拠）
+  it("places the status badge in the second row alongside priority and due date", () => {
+    const todo = makeTodo({
+      title: "配置確認",
+      status: "IN_PROGRESS",
+      priority: "HIGH",
+      dueDate: "2026-08-20",
+    });
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
+      </ul>,
+    );
+
+    const statusBadge = screen.getByRole("button", {
+      name: "「配置確認」を「完了」に変更",
+    });
+    const priorityText = screen.getByText("優先度: 高");
+
+    expect(statusBadge.parentElement).toBe(priorityText.parentElement);
   });
 
   // [代表値] TODO行はモバイル幅でも縦積みにならず、常に横並びレイアウトを維持する（レイアウト崩れ防止）

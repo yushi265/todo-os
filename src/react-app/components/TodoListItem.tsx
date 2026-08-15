@@ -85,25 +85,26 @@ function TodoListItem({
         </svg>
       </button>
 
-      <button
-        type="button"
-        aria-label={`「${todo.title}」を「${STATUS_LABEL[next]}」に変更`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onAdvanceStatus(todo);
-        }}
-        className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_BADGE_CLASSES[todo.status]}`}
-      >
-        {STATUS_LABEL[todo.status]}
-      </button>
-
-      <button
-        type="button"
-        onClick={() => onClick(todo)}
-        className="flex min-h-11 min-w-0 flex-1 flex-col gap-1 text-left"
-      >
-        <span className="font-medium text-text-primary">{todo.title}</span>
+      <div className="flex min-h-11 min-w-0 flex-1 flex-col gap-1">
+        <button
+          type="button"
+          onClick={() => onClick(todo)}
+          className="inline-flex min-h-11 items-center text-left"
+        >
+          <span className="font-medium text-text-primary">{todo.title}</span>
+        </button>
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-secondary">
+          <button
+            type="button"
+            aria-label={`「${todo.title}」を「${STATUS_LABEL[next]}」に変更`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAdvanceStatus(todo);
+            }}
+            className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_BADGE_CLASSES[todo.status]}`}
+          >
+            {STATUS_LABEL[todo.status]}
+          </button>
           <span
             className={
               todo.priority
@@ -130,7 +131,7 @@ function TodoListItem({
             ))}
           </span>
         )}
-      </button>
+      </div>
 
       <button
         type="button"
