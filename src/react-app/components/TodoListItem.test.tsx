@@ -36,8 +36,8 @@ function makeTodo(overrides: Partial<TodoResponse>): TodoResponse {
 }
 
 describe("TodoListItem", () => {
-  // [代表値] sortBy=manual 相当の dragEnabled=true ではドラッグハンドルが活性
-  it("renders an active draggable handle when drag is enabled", () => {
+  // [代表値] sortBy=manual 相当の dragEnabled=true ではカード本体がドラッグ可能
+  it("renders a draggable card without a six-dot handle when drag is enabled", () => {
     const todo = makeTodo({ id: 42, title: "並び替え対象" });
 
     render(
@@ -56,17 +56,15 @@ describe("TodoListItem", () => {
       </ul>,
     );
 
-    const handle = screen.getByRole("button", {
-      name: "ドラッグして並び替え",
-    });
-    expect(handle).toHaveAttribute("draggable", "true");
-    expect(handle).not.toHaveClass("opacity-30");
-    expect(handle).toHaveClass("touch-pan-y");
-    expect(handle).not.toHaveClass("touch-none");
+    const card = screen.getByTestId("todo-item-42");
+    expect(card).toHaveAttribute("draggable", "true");
+    expect(
+      screen.queryByRole("button", { name: "ドラッグして並び替え" }),
+    ).not.toBeInTheDocument();
   });
 
-  // [代表値] ドラッグハンドルのタッチイベントが各コールバックへ伝播する
-  it("wires touch handlers to the drag handle", () => {
+  // [代表値] カード本体のタッチイベントが各コールバックへ伝播する
+  it("wires touch handlers to the card", () => {
     const onTouchStart = vi.fn();
     const onTouchMove = vi.fn();
     const onTouchEnd = vi.fn();
@@ -88,17 +86,15 @@ describe("TodoListItem", () => {
       </ul>,
     );
 
-    const handle = screen.getByRole("button", {
-      name: "ドラッグして並び替え",
-    });
-    fireEvent.touchStart(handle, {
+    const card = screen.getByTestId("todo-item-44");
+    fireEvent.touchStart(card, {
       touches: [{ clientX: 0, clientY: 0 }],
     });
-    fireEvent.touchMove(handle, {
+    fireEvent.touchMove(card, {
       touches: [{ clientX: 1, clientY: 1 }],
     });
-    fireEvent.touchEnd(handle);
-    fireEvent.touchCancel(handle);
+    fireEvent.touchEnd(card);
+    fireEvent.touchCancel(card);
 
     expect(onTouchStart).toHaveBeenCalledOnce();
     expect(onTouchMove).toHaveBeenCalledOnce();
@@ -106,8 +102,8 @@ describe("TodoListItem", () => {
     expect(onTouchCancel).toHaveBeenCalledOnce();
   });
 
-  // [代表値] dragEnabled=false ではドラッグハンドルが非活性
-  it("renders a non-draggable handle when dragging is disabled", () => {
+  // [代表値] dragEnabled=false ではカードもドラッグ不可で、ハンドルを表示しない
+  it("renders a non-draggable card without a six-dot handle when dragging is disabled", () => {
     const todo = makeTodo({ id: 43, title: "非活性対象" });
 
     render(
@@ -126,11 +122,11 @@ describe("TodoListItem", () => {
       </ul>,
     );
 
-    const handle = screen.getByRole("button", {
-      name: "ドラッグして並び替え",
-    });
-    expect(handle).toHaveAttribute("draggable", "false");
-    expect(handle).toHaveClass("opacity-30", "cursor-default");
+    const card = screen.getByTestId("todo-item-43");
+    expect(card).toHaveAttribute("draggable", "false");
+    expect(
+      screen.queryByRole("button", { name: "ドラッグして並び替え" }),
+    ).not.toBeInTheDocument();
   });
 
   // [代表値] 行クリックで onClick(todo) が正しい todo で呼ばれる
@@ -149,28 +145,33 @@ describe("TodoListItem", () => {
         />
       </ul>,
     );
-    await user.click(screen.getByText("編集対象"));
+    await user.click(screen.getByTestId("todo-item-42"));
 
     expect(onClick).toHaveBeenCalledWith(todo);
   });
 
-  // [代表値] タイトルボタンはタッチターゲット最小44pxを維持する
-  it("keeps a 44px minimum touch target on the title button", () => {
+  // [代表値] タイトル専用ボタンを持たず、カード全体がタップ領域になる
+  it("uses the card as the tap target without a fixed title height", async () => {
     const todo = makeTodo({ title: "タップ領域確認" });
+    const onClick = vi.fn();
+    const user = userEvent.setup();
 
     render(
       <ul>
         <TodoListItem
           todo={todo}
-          onClick={vi.fn()}
+          onClick={onClick}
           onDeleteClick={vi.fn()}
           onAdvanceStatus={vi.fn()}
         />
       </ul>,
     );
 
-    const titleButton = screen.getByText("タップ領域確認").closest("button");
-    expect(titleButton).toHaveClass("min-h-11");
+    const title = screen.getByText("タップ領域確認");
+    expect(title.closest("button")).toBeNull();
+    expect(screen.getByText("タップ領域確認")).toHaveClass("text-sm");
+    await user.click(screen.getByTestId("todo-item-1"));
+    expect(onClick).toHaveBeenCalledWith(todo);
   });
 
   // [代表値] 削除ボタンクリックで onDeleteClick(todo) が呼ばれ、onClick は呼ばれない
@@ -190,15 +191,18 @@ describe("TodoListItem", () => {
         />
       </ul>,
     );
-    await user.click(screen.getByLabelText(`「${todo.title}」を削除`));
+    const deleteButton = screen.getByLabelText(`「${todo.title}」を削除`);
+    expect(deleteButton).not.toHaveTextContent("削除");
+    expect(deleteButton.querySelector("svg")).toBeInTheDocument();
+
+    await user.click(deleteButton);
 
     expect(onDeleteClick).toHaveBeenCalledWith(todo);
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  // [代表値] ステータス・優先度・期限が表示される（優先度ラベルは lib/statusStyles の
-  // PRIORITY_LABEL_CLASSES 定義に従い「優先度: 高」形式になる）
-  it("displays status, priority and due date labels", () => {
+  // [代表値] ステータス・優先度はアイコン、期限は文字で表示される
+  it("displays status and priority icons with the due date label", () => {
     const todo = makeTodo({
       status: "IN_PROGRESS",
       priority: "HIGH",
@@ -216,10 +220,45 @@ describe("TodoListItem", () => {
       </ul>,
     );
 
-    expect(screen.getByText("進行中")).toBeInTheDocument();
-    expect(screen.getByText("優先度: 高")).toBeInTheDocument();
+    expect(screen.getByTestId("status-icon-IN_PROGRESS")).toBeInTheDocument();
+    expect(screen.queryByText("進行中")).not.toBeInTheDocument();
+    expect(screen.getByTestId("priority-icon-HIGH")).toHaveTextContent("▲");
+    expect(screen.getByTestId("priority-icon-HIGH")).toHaveAttribute(
+      "aria-label",
+      "優先度: 高",
+    );
+    expect(screen.queryByText("優先度: 高")).not.toBeInTheDocument();
     expect(screen.getByText("2026-08-20")).toBeInTheDocument();
   });
+
+  // [代表値] 未完了ステータスも完了・中止と同じく、左側のアイコンで識別できる
+  it.each([
+    ["TODO", "○", "text-status-todo-fg", "進行中"],
+    ["IN_PROGRESS", "→", "text-status-inprogress-fg", "完了"],
+  ] as const)(
+    "renders a leading status icon for %s",
+    (status, icon, className, nextLabel) => {
+      render(
+        <ul>
+          <TodoListItem
+            todo={makeTodo({ status })}
+            onClick={vi.fn()}
+            onDeleteClick={vi.fn()}
+            onAdvanceStatus={vi.fn()}
+          />
+        </ul>,
+      );
+
+      const statusIcon = screen.getByTestId(`status-icon-${status}`);
+      expect(statusIcon).toHaveTextContent(icon);
+      expect(statusIcon).toHaveClass(className, "!rounded-full");
+      expect(statusIcon).toHaveAttribute(
+        "aria-label",
+        `「サンプル」を「${nextLabel}」に変更`,
+      );
+      expect(statusIcon.parentElement).toBe(screen.getByTestId("todo-item-1"));
+    },
+  );
 
   // [代表値] 本日期限は絵文字マーカーで表示される
   it("displays a today due-date indicator", () => {
@@ -292,8 +331,8 @@ describe("TodoListItem", () => {
     },
   );
 
-  // [境界値] 優先度未設定は "-" 表示
-  it("displays a dash when priority is not set", () => {
+  // [境界値] 優先度・期限日が未設定ならプレースホルダーを表示しない
+  it("hides unset priority and due date instead of displaying dashes", () => {
     const todo = makeTodo({ priority: null });
 
     render(
@@ -307,7 +346,7 @@ describe("TodoListItem", () => {
       </ul>,
     );
 
-    expect(screen.getAllByText("-")).toHaveLength(2); // priority と dueDate の両方が未設定
+    expect(screen.queryByText("-")).not.toBeInTheDocument();
   });
 
   // [代表値] 付与されたタグがバッジで表示される（複数タグでも全件表示・AC-6）
@@ -336,6 +375,32 @@ describe("TodoListItem", () => {
     expect(screen.getByText("#緊急")).toBeInTheDocument();
   });
 
+  // [代表値] タグは優先度・期限と同じメタ情報行に表示される
+  it("keeps assigned tags on the priority metadata row", () => {
+    const todo = makeTodo({
+      priority: "HIGH",
+      dueDate: "2026-08-20",
+      tags: [makeTag({ id: 1, name: "仕事" })],
+    });
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
+      </ul>,
+    );
+
+    const priorityIcon = screen.getByTestId("priority-icon-HIGH");
+    const tagGroup = screen.getByTestId("todo-tags-1");
+
+    expect(tagGroup.parentElement).toBe(priorityIcon.parentElement);
+    expect(priorityIcon.parentElement).toHaveClass("flex-nowrap");
+  });
+
   // [境界値] タグが1件も無い TODO はタグバッジ領域が表示されない
   it("does not render a tag badge area when there are no tags", () => {
     const todo = makeTodo({ id: 3, tags: [] });
@@ -354,8 +419,8 @@ describe("TodoListItem", () => {
     expect(screen.queryByTestId("todo-tags-3")).not.toBeInTheDocument();
   });
 
-  // [代表値] ステータスバッジをクリックすると onAdvanceStatus(todo) が呼ばれる（AC-2）
-  it("calls onAdvanceStatus with the todo when the status badge is clicked", async () => {
+  // [代表値] ステータスアイコンをクリックすると onAdvanceStatus(todo) が呼ばれる（AC-2）
+  it("calls onAdvanceStatus with the todo when the status icon is clicked", async () => {
     const todo = makeTodo({ id: 5, title: "進行対象", status: "TODO" });
     const onAdvanceStatus = vi.fn();
     const user = userEvent.setup();
@@ -370,15 +435,13 @@ describe("TodoListItem", () => {
         />
       </ul>,
     );
-    await user.click(
-      screen.getByRole("button", { name: "「進行対象」を「進行中」に変更" }),
-    );
+    await user.click(screen.getByTestId("status-icon-TODO"));
 
     expect(onAdvanceStatus).toHaveBeenCalledWith(todo);
   });
 
-  // [代表値] ステータスバッジのクリックは onClick（行クリック）を発火させない（イベント伝播制御）
-  it("does not trigger onClick when the status badge is clicked", async () => {
+  // [代表値] ステータスアイコンのクリックは onClick（行クリック）を発火させない（イベント伝播制御）
+  it("does not trigger onClick when the status icon is clicked", async () => {
     const todo = makeTodo({ id: 6, title: "進行対象2", status: "TODO" });
     const onClick = vi.fn();
     const user = userEvent.setup();
@@ -393,15 +456,13 @@ describe("TodoListItem", () => {
         />
       </ul>,
     );
-    await user.click(
-      screen.getByRole("button", { name: "「進行対象2」を「進行中」に変更" }),
-    );
+    await user.click(screen.getByTestId("status-icon-TODO"));
 
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  // [代表値] ステータスバッジはタイトル直下の2段目に配置され、優先度・期限と同じ行に並ぶ（Claude Designのカード構造準拠）
-  it("places the status badge in the second row alongside priority and due date", () => {
+  // [代表値] ステータスアイコンはカード左端に配置され、文字ステータスは2段目に表示しない
+  it("places the status icon at the leading edge without a text status", () => {
     const todo = makeTodo({
       title: "配置確認",
       status: "IN_PROGRESS",
@@ -420,16 +481,42 @@ describe("TodoListItem", () => {
       </ul>,
     );
 
-    const statusBadge = screen.getByRole("button", {
-      name: "「配置確認」を「完了」に変更",
-    });
-    const priorityText = screen.getByText("優先度: 高");
+    const row = screen.getByTestId("todo-item-1");
+    const statusIcon = screen.getByTestId("status-icon-IN_PROGRESS");
+    const priorityIcon = screen.getByTestId("priority-icon-HIGH");
 
-    expect(statusBadge.parentElement).toBe(priorityText.parentElement);
+    expect(statusIcon.parentElement).toBe(row);
+    expect(screen.queryByText("進行中")).not.toBeInTheDocument();
+    expect(priorityIcon.parentElement).not.toBe(row);
   });
 
-  // [代表値] ステータスバッジは44pxのタッチターゲットを維持する
-  it("keeps the status badge keyboard and touch accessible", () => {
+  // [代表値] タイトルボタンは優先度メタ情報と同じ左端から始まる
+  it("aligns the title button with the priority metadata", () => {
+    const todo = makeTodo({
+      title: "左端揃え確認",
+      priority: "HIGH",
+    });
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
+      </ul>,
+    );
+
+    const title = screen.getByText("左端揃え確認");
+    const priorityIcon = screen.getByTestId("priority-icon-HIGH");
+
+    expect(title.parentElement).toHaveClass("px-3", "sm:px-2.5");
+    expect(priorityIcon.parentElement).toHaveClass("w-full");
+  });
+
+  // [代表値] ステータスアイコンは44pxのタッチターゲットを維持する
+  it("keeps the status icon keyboard and touch accessible", () => {
     const todo = makeTodo({ title: "サイズ確認", status: "TODO" });
 
     render(
@@ -443,11 +530,8 @@ describe("TodoListItem", () => {
       </ul>,
     );
 
-    const statusBadge = screen.getByRole("button", {
-      name: "「サイズ確認」を「進行中」に変更",
-    });
-    expect(statusBadge).toHaveClass("min-h-11");
-    expect(statusBadge).toHaveClass("py-1");
+    const statusIcon = screen.getByTestId("status-icon-TODO");
+    expect(statusIcon).toHaveClass("min-h-11", "min-w-11");
   });
 
   // [代表値] TODO行はモバイル幅でも縦積みにならず、常に横並びレイアウトを維持する（レイアウト崩れ防止）
@@ -490,10 +574,10 @@ describe("TodoListItem", () => {
     );
 
     const row = screen.getByTestId("todo-item-10");
-    const metadata = screen.getByText("優先度: 高").parentElement;
+    const metadata = screen.getByTestId("priority-icon-HIGH").parentElement;
 
     expect(row).toHaveClass("gap-2", "sm:gap-1.5");
-    expect(row).not.toHaveClass("sm:gap-4");
+    expect(metadata).toHaveClass("gap-x-2", "sm:gap-x-1.5");
     expect(row).toHaveClass("p-4", "sm:p-3");
     expect(metadata).toHaveClass("text-sm", "sm:text-xs");
   });
@@ -513,19 +597,18 @@ describe("TodoListItem", () => {
     expect(screen.getByTestId("todo-item-11")).toHaveClass(
       "animate-[todo-item-in_0.24s_ease-out]",
     );
-    expect(
-      screen.getByRole("button", {
-        name: "「サンプル」を「進行中」に変更",
-      }),
-    ).toHaveClass("transition-transform", "active:scale-[0.98]");
+    expect(screen.getByTestId("status-icon-TODO")).toHaveClass(
+      "transition-transform",
+      "active:scale-[0.98]",
+    );
   });
 
-  // [デシジョンテーブル] ステータスバッジの aria-label は現在のステータスに応じた次ステータス名を示す
+  // [デシジョンテーブル] ステータスアイコンの aria-label は現在のステータスに応じた次ステータス名を示す
   it.each([
     { status: "TODO", nextLabel: "進行中" },
     { status: "IN_PROGRESS", nextLabel: "完了" },
   ] as const)(
-    "labels the status badge with the next status for $status",
+    "labels the status icon with the next status for $status",
     ({ status, nextLabel }) => {
       const todo = makeTodo({ title: "対象", status });
 
@@ -540,11 +623,11 @@ describe("TodoListItem", () => {
         </ul>,
       );
 
-      expect(
-        screen.getByRole("button", {
-          name: `「対象」を「${nextLabel}」に変更`,
-        }),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(`status-icon-${status}`)).toBeInTheDocument();
+      expect(screen.getByTestId(`status-icon-${status}`)).toHaveAttribute(
+        "aria-label",
+        `「対象」を「${nextLabel}」に変更`,
+      );
     },
   );
 });

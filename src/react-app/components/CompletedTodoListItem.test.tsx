@@ -52,7 +52,9 @@ describe("CompletedTodoListItem", () => {
     const title = screen.getByText("完了タスク");
     expect(title).toHaveClass("line-through");
     const icon = screen.getByText("✓");
-    expect(icon).toHaveClass("text-status-done-fg");
+    expect(icon).toHaveClass("text-status-done-fg", "h-11", "w-11");
+    expect(screen.getByTestId("status-icon-DONE")).toBe(icon);
+    expect(screen.queryByText("完了", { exact: true })).not.toBeInTheDocument();
   });
 
   // [代表値] 完了済み TODO（CANCELED）が取り消し線タイトル＋グレー×アイコンで表示される（AC-5）
@@ -72,7 +74,9 @@ describe("CompletedTodoListItem", () => {
     const title = screen.getByText("中止タスク");
     expect(title).toHaveClass("line-through");
     const icon = screen.getByText("×");
-    expect(icon).toHaveClass("text-status-canceled-fg");
+    expect(icon).toHaveClass("text-status-canceled-fg", "h-11", "w-11");
+    expect(screen.getByTestId("status-icon-CANCELED")).toBe(icon);
+    expect(screen.queryByText("中止", { exact: true })).not.toBeInTheDocument();
   });
 
   // [デシジョンテーブル] 完了済みセクション（DONE/CANCELED）の行にはステータス進行の操作 UI が存在しない（AC-2）
@@ -97,8 +101,8 @@ describe("CompletedTodoListItem", () => {
     },
   );
 
-  // [回帰] 手動並び順以外では完了済み TODO をドラッグ対象にしない
-  it("does not make a completed todo draggable when drag is disabled", () => {
+  // [代表値] 完了済み TODO は常にドラッグ対象にしない
+  it("does not make a completed todo draggable", () => {
     render(
       <ul>
         <CompletedTodoListItem
@@ -115,21 +119,20 @@ describe("CompletedTodoListItem", () => {
     );
   });
 
-  // [代表値] 手動並び順では完了済み TODO もカード全体をドラッグできる
-  it("makes a completed todo card draggable when drag is enabled", () => {
+  // [境界値] 手動並び順でも完了済み TODO はドラッグできないが、カードは操作可能
+  it("keeps a completed todo card non-draggable while keeping it focusable", () => {
     render(
       <ul>
         <CompletedTodoListItem
           todo={makeTodo({ title: "完了済み" })}
           onClick={vi.fn()}
           onDeleteClick={vi.fn()}
-          dragEnabled
         />
       </ul>,
     );
 
     const card = screen.getByTestId("todo-item-1");
-    expect(card).toHaveAttribute("draggable", "true");
+    expect(card).toHaveAttribute("draggable", "false");
     expect(card).toHaveAttribute("tabindex", "0");
   });
 
@@ -169,7 +172,11 @@ describe("CompletedTodoListItem", () => {
         />
       </ul>,
     );
-    await user.click(screen.getByLabelText(`「${todo.title}」を削除`));
+    const deleteButton = screen.getByLabelText(`「${todo.title}」を削除`);
+    expect(deleteButton).not.toHaveTextContent("削除");
+    expect(deleteButton.querySelector("svg")).toBeInTheDocument();
+
+    await user.click(deleteButton);
 
     expect(onDeleteClick).toHaveBeenCalledWith(todo);
     expect(onClick).not.toHaveBeenCalled();
@@ -236,7 +243,7 @@ describe("CompletedTodoListItem", () => {
     const row = screen.getByTestId("todo-item-10");
     const metadata = screen.getByText(todo.updatedAt).parentElement;
 
-    expect(row).toHaveClass("gap-3", "sm:gap-2");
+    expect(row).toHaveClass("gap-2", "sm:gap-1.5");
     expect(row).toHaveClass("p-4", "sm:p-3");
     expect(metadata).toHaveClass("text-sm", "sm:text-xs");
   });

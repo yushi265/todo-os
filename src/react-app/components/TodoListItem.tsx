@@ -7,11 +7,15 @@ import type { TodoResponse } from "../../shared/types";
 import { dueDateStatus, type DueDateStatus } from "../lib/dueDateStatus";
 import {
   nextStatus,
+  PRIORITY_ICON,
   PRIORITY_LABEL_CLASSES,
-  STATUS_BADGE_CLASSES,
+  STATUS_ICON,
+  STATUS_ICON_CLASSES,
   STATUS_LABEL,
 } from "../lib/statusStyles";
 import TagBadge from "./TagBadge";
+import TodoCardShell from "./TodoCardShell";
+import Button from "./ui/button";
 
 const DUE_DATE_STATUS_CLASSES: Record<Exclude<DueDateStatus, null>, string> = {
   overdue: "font-semibold text-danger",
@@ -38,7 +42,7 @@ interface TodoListItemProps {
   todo: TodoResponse;
   onClick: (todo: TodoResponse) => void;
   onDeleteClick: (todo: TodoResponse) => void;
-  /** ステータスバッジクリックによる進行ショートカット（AC-2）。呼び出し元が PATCH 送信を担う。 */
+  /** ステータスアイコンクリックによる進行ショートカット（AC-2）。呼び出し元が PATCH 送信を担う。 */
   onAdvanceStatus: (todo: TodoResponse) => void;
   dragEnabled?: boolean;
   isDragOver?: boolean;
@@ -80,119 +84,90 @@ function TodoListItem({
   const next = nextStatus(todo.status);
 
   return (
-    <li
+    <TodoCardShell
+      todo={todo}
+      statusIcon={
+        <Button
+          variant="ghost"
+          size="icon"
+          type="button"
+          aria-label={`「${todo.title}」を「${STATUS_LABEL[next]}」に変更`}
+          title={`「${todo.title}」を「${STATUS_LABEL[next]}」に変更`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAdvanceStatus(todo);
+          }}
+          data-drag-exclude="true"
+          data-testid={`status-icon-${todo.status}`}
+          className={`shrink-0 !rounded-full text-sm font-bold transition-transform active:scale-[0.98] ${STATUS_ICON_CLASSES[todo.status]}`}
+        >
+          {STATUS_ICON[todo.status]}
+        </Button>
+      }
+      onCardClick={onClick}
+      onDeleteClick={onDeleteClick}
+      dragEnabled={dragEnabled}
+      isDragOver={isDragOver}
+      isKeyboardDragging={isKeyboardDragging}
+      onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
-      draggable={dragEnabled}
-      tabIndex={dragEnabled ? 0 : undefined}
-      aria-label={`「${todo.title}」`}
-      aria-grabbed={isKeyboardDragging}
-      aria-describedby={dragEnabled ? "todo-reorder-help" : undefined}
-      onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onKeyDown={onKeyDown}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
       onTouchCancel={onTouchCancel}
-      className={`flex animate-[todo-item-in_0.24s_ease-out] items-center gap-2 rounded-2xl border p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] sm:gap-1.5 sm:p-3 ${dragEnabled ? "cursor-grab" : ""} ${isDragOver || isKeyboardDragging ? "border-chip-border bg-chip-bg" : "border-border-subtle bg-card"}`}
-      data-testid={`todo-item-${todo.id}`}
     >
-      <button
-        type="button"
-        aria-label="ドラッグして並び替え"
-        title="ドラッグして並び替え"
-        draggable={dragEnabled}
-        data-drag-handle="true"
-        className={`inline-flex min-h-11 min-w-11 shrink-0 touch-pan-y items-center justify-center rounded-xl text-text-tertiary ${dragEnabled ? "cursor-grab hover:bg-surface" : "cursor-default opacity-30"}`}
-      >
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          className="h-5 w-5"
-          fill="currentColor"
-        >
-          <circle cx="8" cy="6" r="1.5" />
-          <circle cx="16" cy="6" r="1.5" />
-          <circle cx="8" cy="12" r="1.5" />
-          <circle cx="16" cy="12" r="1.5" />
-          <circle cx="8" cy="18" r="1.5" />
-          <circle cx="16" cy="18" r="1.5" />
-        </svg>
-      </button>
-
-      <div className="flex min-h-11 min-w-0 flex-1 flex-col gap-1">
-        <button
-          type="button"
-          onClick={() => onClick(todo)}
-          className="inline-flex min-h-11 items-center text-left"
-        >
-          <span className="font-medium text-text-primary">{todo.title}</span>
-        </button>
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-secondary sm:text-xs">
-          <button
-            type="button"
-            aria-label={`「${todo.title}」を「${STATUS_LABEL[next]}」に変更`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAdvanceStatus(todo);
-            }}
-            className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-3 py-1 text-xs font-medium transition-transform active:scale-[0.98] ${STATUS_BADGE_CLASSES[todo.status]}`}
-          >
-            {STATUS_LABEL[todo.status]}
-          </button>
-          <span
-            className={
-              todo.priority
-                ? PRIORITY_LABEL_CLASSES[todo.priority].className
-                : ""
-            }
-          >
-            {todo.priority ? PRIORITY_LABEL_CLASSES[todo.priority].label : "-"}
-          </span>
-          <span
-            data-testid={dueStatus ? `due-status-${dueStatus}` : undefined}
-            className={
-              dueStatus ? DUE_DATE_STATUS_CLASSES[dueStatus] : undefined
-            }
-          >
-            {dueStatus && (
+      <div className="flex min-w-0 flex-1 flex-col gap-1 px-3 sm:px-2.5">
+        <span className="text-sm font-medium text-text-primary">
+          {todo.title}
+        </span>
+        {(todo.priority || todo.dueDate || todo.tags.length > 0) && (
+          <span className="flex w-full min-w-0 flex-nowrap items-center gap-x-2 overflow-x-auto text-sm text-text-secondary sm:gap-x-1.5 sm:text-xs">
+            {todo.priority && (
               <span
                 role="img"
-                aria-label={DUE_DATE_STATUS_ARIA_LABELS[dueStatus]}
-                data-testid={`due-status-marker-${dueStatus}`}
-                className="mr-1"
+                aria-label={PRIORITY_LABEL_CLASSES[todo.priority].label}
+                title={PRIORITY_LABEL_CLASSES[todo.priority].label}
+                data-testid={`priority-icon-${todo.priority}`}
+                className={`shrink-0 ${PRIORITY_LABEL_CLASSES[todo.priority].className}`}
               >
-                {DUE_DATE_STATUS_MARKERS[dueStatus]}
+                {PRIORITY_ICON[todo.priority]}
               </span>
             )}
-            {todo.dueDate ?? "-"}
-          </span>
-        </span>
-        {todo.tags.length > 0 && (
-          <span
-            data-testid={`todo-tags-${todo.id}`}
-            className="flex flex-wrap gap-1"
-          >
-            {todo.tags.map((tag) => (
-              <TagBadge key={tag.id} tag={tag} />
-            ))}
+            {todo.dueDate && (
+              <span
+                data-testid={dueStatus ? `due-status-${dueStatus}` : undefined}
+                className={`shrink-0 ${dueStatus ? DUE_DATE_STATUS_CLASSES[dueStatus] : ""}`}
+              >
+                {dueStatus && (
+                  <span
+                    role="img"
+                    aria-label={DUE_DATE_STATUS_ARIA_LABELS[dueStatus]}
+                    data-testid={`due-status-marker-${dueStatus}`}
+                    className="mr-1"
+                  >
+                    {DUE_DATE_STATUS_MARKERS[dueStatus]}
+                  </span>
+                )}
+                {todo.dueDate}
+              </span>
+            )}
+            {todo.tags.length > 0 && (
+              <span
+                data-testid={`todo-tags-${todo.id}`}
+                className="flex shrink-0 flex-nowrap gap-1"
+              >
+                {todo.tags.map((tag) => (
+                  <TagBadge key={tag.id} tag={tag} />
+                ))}
+              </span>
+            )}
           </span>
         )}
       </div>
-
-      <button
-        type="button"
-        aria-label={`「${todo.title}」を削除`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onDeleteClick(todo);
-        }}
-        className="min-h-11 min-w-11 shrink-0 rounded-xl px-2 text-text-tertiary hover:bg-danger-bg hover:text-danger"
-      >
-        削除
-      </button>
-    </li>
+    </TodoCardShell>
   );
 }
 
