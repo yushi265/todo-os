@@ -1,0 +1,4 @@
+interface:
+  display_name: "TODO整理"
+  short_description: "TODOの完了判定・優先順位付け・バックログ整理を支援"
+  default_prompt: "Use $todo-organizer to review and reorganize the project TODO backlog."
