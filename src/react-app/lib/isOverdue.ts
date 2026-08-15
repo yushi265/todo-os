@@ -1,12 +1,5 @@
 import type { TodoStatus } from "../../shared/types";
-
-const OPEN_STATUSES: readonly TodoStatus[] = ["TODO", "IN_PROGRESS"];
-
-function todayInTokyo(now: Date): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(
-    now,
-  );
-}
+import { dueDateStatus } from "./dueDateStatus";
 
 /**
  * 期限切れ判定（AC-4）。
@@ -18,11 +11,5 @@ export function isOverdue(
   status: TodoStatus,
   now: Date = new Date(),
 ): boolean {
-  if (dueDate === null) {
-    return false;
-  }
-  if (!OPEN_STATUSES.includes(status)) {
-    return false;
-  }
-  return dueDate < todayInTokyo(now);
+  return dueDateStatus(dueDate, status, now) === "overdue";
 }
