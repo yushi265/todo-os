@@ -14,6 +14,8 @@
 
 ## 再利用可能な部品
 
+- `STATUS_BADGE_CLASSES` / `STATUS_LABEL` / `PRIORITY_LABEL_CLASSES` / `nextStatus(status)`（参照: `src/react-app/lib/statusStyles.ts`）: ステータス・優先度の表示ラベルと配色クラスの静的マッピング、およびステータス進行ロジック（`TODO`→`IN_PROGRESS`→`DONE`、`DONE`/`CANCELED`は不変）。`TodoListItem`/`CompletedTodoListItem`/`TodoFormModal`が共有する（ui-visual-refresh ユニットで導入）。
+- `TodoListItem`（未完了専用）/ `CompletedTodoListItem`（完了済み専用、参照: `src/react-app/components/`）: 未完了/完了済みで情報量・レイアウトが大きく異なる場合の分割パターン。`TodoList`が`todo.status`で振り分ける。1コンポーネント内の条件分岐より見通しが良い（ui-visual-refresh ユニットで導入）。
 - `findTodoById(db, id)` / `findTagsByIds(db, tagIds)`（参照: `src/worker/routes/todos.ts`）: id 指定の 1 件取得・複数 id の存在確認+取得。GET/:id・PATCH・DELETE、`tagIds` の存在チェックで共通化。
 - `calculateNextSortOrder(maxSortOrder: number | null): number`（参照: 同上）: 新規行の sort_order 採番（既存最大値+1、0件なら0）。
 - `attachTags(db, todoRows)`（参照: 同上）: 複数 TODO に紐づくタグを 1 回の JOIN で一括取得しグルーピングして付与する（N+1 回避パターン）。一覧・単体取得・作成・更新のレスポンス構築で共通利用。
@@ -34,8 +36,15 @@
 - `@cloudflare/vitest-pool-workers` では v8 のネイティブカバレッジが未サポート（`node:inspector` 未実装でエラー）。Istanbul provider（`@vitest/coverage-istanbul`）を使う（参照: `vitest.config.ts`）。ただし Istanbul でも Workers runtime（workerd）内で収集したカバレッジデータが Node.js 側レポーターへ橋渡しされない未解決issueがあり、service 層（`src/worker/`）の数値は不正確になる。ui 層（jsdom・Node.js プロセス内実行）の数値のみ信頼できる（出典: `docs/ai-dlc/retro/todo-crud-basic.md`）。
 - `cloudflare:test` の `env`/`SELF` エクスポートは非推奨（`@deprecated`）。代わりに `cloudflare:workers` の `env`/`exports` を使う（`exports.default.fetch(request)` は Service Binding 形式でループバック呼び出しになるため `env`/`ctx` 引数は渡さない。渡すと型エラーになる）。`applyD1Migrations` は非推奨ではない。
 - Vitest 4 の `test.projects` で Workers 環境（`cloudflareTest` プラグイン）と jsdom 環境（`react()` プラグイン）を同一 `vitest.config.ts` 内に共存できる（`test.projects` 配列の各要素に `plugins`/`test.environment` を個別指定）。ルートの `test.include` を絞らないと `.claude/aidlc/` 配下の別プロジェクトのテストまで巻き込む。
-- Tailwind CSS v4 は `@tailwindcss/vite` プラグイン + CSS ファイルへの `@import "tailwindcss";` のみでセットアップ完了（v3 系の `tailwind.config.js`/PostCSS 設定は不要）。
+- Tailwind CSS v4 は `@tailwindcss/vite` プラグイン + CSS ファイルへの `@import "tailwindcss";` のみでセットアップ完了（v3 系の `tailwind.config.js`/PostCSS 設定は不要）。デザイン固有の配色は `src/react-app/index.css` の `@theme` ブロックでセマンティックトークン（`--color-*`）として定義すると `bg-*`/`text-*`/`border-*` 等のユーティリティクラスが自動生成される。
+- Tailwind の JIT はテンプレートリテラルで動的に組み立てたクラス名（例: `` `bg-${status}` ``）を検出できない。ステータス・優先度等の値に応じて配色を切り替える場合は `Record<Enum, string>` 形式の静的マッピングとして持つ（参照: `src/react-app/lib/statusStyles.ts`）。
+- **Claude Design MCP（`DesignSync`）はメインループのセッションでのみ使用可能**。Agent ツールで起動したサブエージェント（Explore・general-purpose 等）からは `ToolSearch` で発見できない（11 通りのクエリで検証済み）。デザインファイルの分析・詳細抽出はメインループ自身が直接 `DesignSync.get_file` を呼んで行う必要がある（出典: `docs/ai-dlc/retro/ui-visual-refresh.md`）。
+- `DesignSync.get_file` の結果は JSON 化された1行の巨大文字列で返り、ツール結果が大きいと `tool-results/*.txt` に保存されて `Read` が行数ベースの offset/limit で分割できない（1 行しかないため）。`python3 -c "import json; ...content..."` で JSON をデコードし実際の改行を復元したファイルをスクラッチパッドに書き出してから `Read`/`grep` する（出典: 同上）。
+
+## 中断・再開の運用（advisory）
+
+- worker（implementer 等）への委譲中に API エラー（マシンスリープ・セッション使用量上限等）で中断した場合、`progress.md` の worklog チェックポイントと `git status`/`pnpm test` による実物確認を組み合わせれば無損失で再開できる（3 回の中断を経て実証。出典: `docs/ai-dlc/retro/ui-visual-refresh.md`）。ただし worker が中断直前に worklog 追記そのものを完了できていないことがあるため、再開前にオーケストレーター側で実物確認し、記録漏れがあれば代理で追記してから再開させる。
 
 ## 最終更新
 
-- tag-management / 2026-08-15（本コミットで追加。commit SHA はコミット後に確認）
+- ui-visual-refresh / 2026-08-15（本コミットで追加。commit SHA はコミット後に確認）

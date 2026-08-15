@@ -1,1 +1,42 @@
 @import "tailwindcss";
+
+@theme {
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-surface: #f4f4f2;
+  --color-card: #ffffff;
+
+  --color-text-primary: #1c1c1e;
+  --color-text-secondary: #48484a;
+  --color-text-tertiary: #8e8e93;
+  --color-text-quaternary: #aeaeb2;
+  --color-text-faint: #c7c7cc;
+
+  --color-border: #e3e3e0;
+  --color-border-subtle: #ececea;
+  --color-border-dashed: #d6d6d3;
+
+  --color-danger: #dc2626;
+  --color-danger-bg: #fee2e2;
+
+  --color-status-todo-bg: #f2f2f0;
+  --color-status-todo-fg: #636366;
+  --color-status-inprogress-bg: #e7e5ff;
+  --color-status-inprogress-fg: #4f46e5;
+  --color-status-done-bg: #dcf5e7;
+  --color-status-done-fg: #0d9459;
+  --color-status-canceled-bg: #f2f2f0;
+  --color-status-canceled-fg: #aeaeb2;
+
+  --color-priority-high: #dc2626;
+  --color-priority-medium: #c07c10;
+  --color-priority-low: #8e8e93;
+
+  --color-tag-bg: #f2f2f0;
+  --color-tag-fg: #636366;
+  --color-tag-fg-muted: #c7c7cc;
+
+  --color-chip-bg: #eef1ff;
+  --color-chip-border: #c7d2fe;
+  --color-chip-fg: #4338ca;
+}

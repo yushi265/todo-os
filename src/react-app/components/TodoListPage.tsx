@@ -1,7 +1,13 @@
 import { useState } from "react";
 import type { TodoResponse } from "../../shared/types";
 import { useShowCompleted } from "../hooks/useShowCompleted";
-import { ApiError, useDeleteTodo, useTodos } from "../hooks/useTodos";
+import {
+  ApiError,
+  useDeleteTodo,
+  useTodos,
+  useUpdateTodo,
+} from "../hooks/useTodos";
+import { nextStatus } from "../lib/statusStyles";
 import CompletedToggle from "./CompletedToggle";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import TagManagementModal from "./TagManagementModal";
@@ -20,6 +26,7 @@ function TodoListPage() {
   const [isTagManagementOpen, setIsTagManagementOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const deleteMutation = useDeleteTodo();
+  const advanceStatusMutation = useUpdateTodo();
 
   function handleNotFound() {
     setToast("対象の TODO が見つかりませんでした");
@@ -42,72 +49,102 @@ function TodoListPage() {
     });
   }
 
+  /**
+   * ステータス進行ショートカット（AC-2）。`nextStatus` のみを PATCH で送信し、
+   * `DONE` 到達時のみ完了トーストを表示する（AC-3）。404 は既存の削除時パターンに準拠する
+   * （ui.md 異常系挙動）。
+   */
+  function handleAdvanceStatus(todo: TodoResponse) {
+    const next = nextStatus(todo.status);
+    if (next === todo.status) return;
+    advanceStatusMutation.mutate(
+      { id: todo.id, input: { status: next } },
+      {
+        onSuccess: () => {
+          if (next === "DONE") {
+            setToast(`「${todo.title}」を完了にしました`);
+          }
+        },
+        onError: (error) => {
+          if (error instanceof ApiError && error.status === 404) {
+            handleNotFound();
+            return;
+          }
+          setToast("時間をおいて再度お試しください");
+        },
+      },
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-3xl p-4">
-      <header className="mb-4 flex items-center justify-between gap-4">
-        <h1 className="text-xl font-bold text-gray-900">todo-os</h1>
-        <div className="flex items-center gap-4">
-          <CompletedToggle
-            checked={showCompleted}
-            onChange={setShowCompleted}
+    <div className="min-h-screen bg-surface">
+      <div className="mx-auto max-w-3xl p-4">
+        <header className="mb-4 flex items-center justify-between gap-4">
+          <h1 className="text-xl font-bold text-text-primary">todo-os</h1>
+          <div className="flex items-center gap-4">
+            <CompletedToggle
+              checked={showCompleted}
+              onChange={setShowCompleted}
+            />
+            <button
+              type="button"
+              onClick={() => setIsTagManagementOpen(true)}
+              className="min-h-11 rounded-xl border border-border bg-card px-4 py-2 text-text-secondary hover:bg-surface"
+            >
+              タグ管理
+            </button>
+            <button
+              type="button"
+              onClick={() => setModalState({ type: "create" })}
+              className="min-h-11 rounded-xl bg-primary px-4 py-2 text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover"
+            >
+              + 追加
+            </button>
+          </div>
+        </header>
+
+        {isLoading && (
+          <p role="status" className="py-10 text-center text-text-tertiary">
+            読み込み中...
+          </p>
+        )}
+
+        {isError && (
+          <div className="py-10 text-center">
+            <p className="mb-4 text-danger">TODO の取得に失敗しました</p>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="min-h-11 rounded-xl border border-border bg-card px-4 py-2 text-text-secondary hover:bg-surface"
+            >
+              再試行
+            </button>
+          </div>
+        )}
+
+        {!isLoading && !isError && data && data.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-border-dashed py-10 text-center">
+            <p className="mb-4 text-text-tertiary">TODO はまだありません</p>
+            <button
+              type="button"
+              onClick={() => setModalState({ type: "create" })}
+              className="min-h-11 rounded-xl bg-primary px-6 py-3 text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover"
+            >
+              + 最初の TODO を追加
+            </button>
+          </div>
+        )}
+
+        {!isLoading && !isError && data && data.length > 0 && (
+          <TodoList
+            todos={data}
+            showCompleted={showCompleted}
+            onItemClick={(todo) => setModalState({ type: "edit", todo })}
+            onDeleteClick={setDeleteTarget}
+            onAdvanceStatus={handleAdvanceStatus}
           />
-          <button
-            type="button"
-            onClick={() => setIsTagManagementOpen(true)}
-            className="min-h-11 rounded border border-gray-300 px-4 py-2 hover:bg-gray-50"
-          >
-            タグ管理
-          </button>
-          <button
-            type="button"
-            onClick={() => setModalState({ type: "create" })}
-            className="min-h-11 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-          >
-            + 追加
-          </button>
-        </div>
-      </header>
-
-      {isLoading && (
-        <p role="status" className="py-10 text-center text-gray-500">
-          読み込み中...
-        </p>
-      )}
-
-      {isError && (
-        <div className="py-10 text-center">
-          <p className="mb-4 text-red-600">TODO の取得に失敗しました</p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="min-h-11 rounded border border-gray-300 px-4 py-2 hover:bg-gray-50"
-          >
-            再試行
-          </button>
-        </div>
-      )}
-
-      {!isLoading && !isError && data && data.length === 0 && (
-        <div className="py-10 text-center">
-          <p className="mb-4 text-gray-500">TODO はまだありません</p>
-          <button
-            type="button"
-            onClick={() => setModalState({ type: "create" })}
-            className="min-h-11 rounded bg-blue-600 px-6 py-3 text-white hover:bg-blue-700"
-          >
-            + 最初の TODO を追加
-          </button>
-        </div>
-      )}
-
-      {!isLoading && !isError && data && data.length > 0 && (
-        <TodoList
-          todos={data}
-          showCompleted={showCompleted}
-          onItemClick={(todo) => setModalState({ type: "edit", todo })}
-          onDeleteClick={setDeleteTarget}
-        />
-      )}
+        )}
+      </div>
 
       {modalState && (
         <TodoFormModal
@@ -136,7 +173,7 @@ function TodoListPage() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-x-0 bottom-4 mx-auto flex w-fit items-center gap-3 rounded bg-gray-900 px-4 py-3 text-white shadow-lg"
+          className="fixed inset-x-0 bottom-4 mx-auto flex w-fit items-center gap-3 rounded-xl bg-text-primary px-4 py-3 text-white shadow-[0_4px_16px_rgba(0,0,0,0.07)]"
         >
           <span>{toast}</span>
           <button

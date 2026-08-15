@@ -270,4 +270,112 @@ describe("TodoFormModal", () => {
       "true",
     );
   });
+
+  // [デシジョンテーブル] 編集モードで status !== "DONE" の間は「✓ 完了にする」ボタンが表示される（AC-4）
+  it.each([
+    { status: "TODO" },
+    { status: "IN_PROGRESS" },
+    { status: "CANCELED" },
+  ] as const)(
+    "shows the complete-now button in edit mode when status is $status",
+    ({ status }) => {
+      const todo = makeTodo({ status });
+      mockFetch(() => jsonResponse(todo, 200));
+
+      renderWithQueryClient(
+        <TodoFormModal
+          isEdit={true}
+          todo={todo}
+          onClose={vi.fn()}
+          onNotFound={vi.fn()}
+        />,
+      );
+
+      expect(
+        screen.getByRole("button", { name: "✓ 完了にする" }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  // [デシジョンテーブル] 編集モードで status === "DONE" の時は「✓ 完了にする」ボタンが表示されない（AC-4）
+  it("does not show the complete-now button in edit mode when status is DONE", () => {
+    const todo = makeTodo({ status: "DONE" });
+    mockFetch(() => jsonResponse(todo, 200));
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit={true}
+        todo={todo}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "✓ 完了にする" }),
+    ).not.toBeInTheDocument();
+  });
+
+  // [代表値] 「✓ 完了にする」ボタンをクリックするとステータスセレクトが DONE になり、
+  // 送信 mutation（PATCH）はまだ呼ばれない（AC-4）
+  it("sets the status select to DONE without submitting when the complete-now button is clicked", async () => {
+    const user = userEvent.setup();
+    const todo = makeTodo({ status: "TODO" });
+    mockFetch(() => jsonResponse(todo, 200));
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit={true}
+        todo={todo}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "✓ 完了にする" }));
+
+    expect(screen.getByLabelText("ステータス")).toHaveValue("DONE");
+    expect(
+      screen.queryByRole("button", { name: "✓ 完了にする" }),
+    ).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/todos/42",
+      expect.objectContaining({ method: "PATCH" }),
+    );
+  });
+
+  // [代表値] 「✓ 完了にする」ボタン押下後にフォームを送信すると、PATCH body に
+  // status: "DONE" が含まれる（AC-4 のレイヤー内結合。index.md テスト戦略表の担保対象）
+  it("submits the PATCH with status DONE after clicking the complete-now button then saving", async () => {
+    const user = userEvent.setup();
+    const todo = makeTodo({ status: "TODO" });
+    mockFetch(() => jsonResponse({ ...todo, status: "DONE" }, 200));
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit={true}
+        todo={todo}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "✓ 完了にする" }));
+    await user.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/todos/42",
+        expect.objectContaining({ method: "PATCH" }),
+      );
+    });
+    const patchCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === "/api/todos/42" &&
+        (init as RequestInit | undefined)?.method === "PATCH",
+    );
+    expect(patchCall).toBeDefined();
+    const body = JSON.parse((patchCall?.[1] as RequestInit).body as string);
+    expect(body.status).toBe("DONE");
+  });
 });

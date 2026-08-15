@@ -43,7 +43,12 @@ describe("TodoListItem", () => {
 
     render(
       <ul>
-        <TodoListItem todo={todo} onClick={onClick} onDeleteClick={vi.fn()} />
+        <TodoListItem
+          todo={todo}
+          onClick={onClick}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
       </ul>,
     );
     await user.click(screen.getByText("編集対象"));
@@ -64,6 +69,7 @@ describe("TodoListItem", () => {
           todo={todo}
           onClick={onClick}
           onDeleteClick={onDeleteClick}
+          onAdvanceStatus={vi.fn()}
         />
       </ul>,
     );
@@ -73,7 +79,8 @@ describe("TodoListItem", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  // [代表値] ステータス・優先度・期限が表示される
+  // [代表値] ステータス・優先度・期限が表示される（優先度ラベルは lib/statusStyles の
+  // PRIORITY_LABEL_CLASSES 定義に従い「優先度: 高」形式になる）
   it("displays status, priority and due date labels", () => {
     const todo = makeTodo({
       status: "IN_PROGRESS",
@@ -83,12 +90,17 @@ describe("TodoListItem", () => {
 
     render(
       <ul>
-        <TodoListItem todo={todo} onClick={vi.fn()} onDeleteClick={vi.fn()} />
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
       </ul>,
     );
 
     expect(screen.getByText("進行中")).toBeInTheDocument();
-    expect(screen.getByText("高")).toBeInTheDocument();
+    expect(screen.getByText("優先度: 高")).toBeInTheDocument();
     expect(screen.getByText("2026-08-20")).toBeInTheDocument();
   });
 
@@ -98,7 +110,12 @@ describe("TodoListItem", () => {
 
     render(
       <ul>
-        <TodoListItem todo={todo} onClick={vi.fn()} onDeleteClick={vi.fn()} />
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
       </ul>,
     );
 
@@ -117,7 +134,12 @@ describe("TodoListItem", () => {
 
     render(
       <ul>
-        <TodoListItem todo={todo} onClick={vi.fn()} onDeleteClick={vi.fn()} />
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
       </ul>,
     );
 
@@ -132,10 +154,89 @@ describe("TodoListItem", () => {
 
     render(
       <ul>
-        <TodoListItem todo={todo} onClick={vi.fn()} onDeleteClick={vi.fn()} />
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
       </ul>,
     );
 
     expect(screen.queryByTestId("todo-tags-3")).not.toBeInTheDocument();
   });
+
+  // [代表値] ステータスバッジをクリックすると onAdvanceStatus(todo) が呼ばれる（AC-2）
+  it("calls onAdvanceStatus with the todo when the status badge is clicked", async () => {
+    const todo = makeTodo({ id: 5, title: "進行対象", status: "TODO" });
+    const onAdvanceStatus = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={onAdvanceStatus}
+        />
+      </ul>,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "「進行対象」を「進行中」に変更" }),
+    );
+
+    expect(onAdvanceStatus).toHaveBeenCalledWith(todo);
+  });
+
+  // [代表値] ステータスバッジのクリックは onClick（行クリック）を発火させない（イベント伝播制御）
+  it("does not trigger onClick when the status badge is clicked", async () => {
+    const todo = makeTodo({ id: 6, title: "進行対象2", status: "TODO" });
+    const onClick = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={todo}
+          onClick={onClick}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
+      </ul>,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "「進行対象2」を「進行中」に変更" }),
+    );
+
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  // [デシジョンテーブル] ステータスバッジの aria-label は現在のステータスに応じた次ステータス名を示す
+  it.each([
+    { status: "TODO", nextLabel: "進行中" },
+    { status: "IN_PROGRESS", nextLabel: "完了" },
+  ] as const)(
+    "labels the status badge with the next status for $status",
+    ({ status, nextLabel }) => {
+      const todo = makeTodo({ title: "対象", status });
+
+      render(
+        <ul>
+          <TodoListItem
+            todo={todo}
+            onClick={vi.fn()}
+            onDeleteClick={vi.fn()}
+            onAdvanceStatus={vi.fn()}
+          />
+        </ul>,
+      );
+
+      expect(
+        screen.getByRole("button", {
+          name: `「対象」を「${nextLabel}」に変更`,
+        }),
+      ).toBeInTheDocument();
+    },
+  );
 });

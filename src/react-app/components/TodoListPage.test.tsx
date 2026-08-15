@@ -185,4 +185,165 @@ describe("TodoListPage", () => {
       screen.getByRole("dialog", { name: "タグ管理" }),
     ).toBeInTheDocument();
   });
+
+  // [代表値] TODO のステータスバッジをクリックすると PATCH が次のステータスで呼ばれる（AC-2）
+  it("calls PATCH with the next status when the status badge on a TODO item is clicked", async () => {
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        return Promise.resolve(
+          jsonResponse(
+            makeTodo({ id: 9, title: "進行対象", status: "IN_PROGRESS" }),
+            200,
+          ),
+        );
+      }
+      return Promise.resolve(
+        jsonResponse([makeTodo({ id: 9, title: "進行対象", status: "TODO" })]),
+      );
+    });
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<TodoListPage />);
+    await user.click(
+      await screen.findByRole("button", {
+        name: "「進行対象」を「進行中」に変更",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/todos/9",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ status: "IN_PROGRESS" }),
+        }),
+      );
+    });
+  });
+
+  // [代表値] IN_PROGRESS → DONE の進行では成功後に完了トーストが表示される（AC-3）
+  it("shows a completion toast after advancing an IN_PROGRESS todo to DONE", async () => {
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        return Promise.resolve(
+          jsonResponse(
+            makeTodo({ id: 9, title: "完了対象", status: "DONE" }),
+            200,
+          ),
+        );
+      }
+      return Promise.resolve(
+        jsonResponse([
+          makeTodo({ id: 9, title: "完了対象", status: "IN_PROGRESS" }),
+        ]),
+      );
+    });
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<TodoListPage />);
+    await user.click(
+      await screen.findByRole("button", {
+        name: "「完了対象」を「完了」に変更",
+      }),
+    );
+
+    expect(
+      await screen.findByText("「完了対象」を完了にしました"),
+    ).toBeInTheDocument();
+  });
+
+  // [代表値] TODO → IN_PROGRESS の進行ではトーストが表示されない（AC-3）
+  it("does not show a toast when advancing a TODO item to IN_PROGRESS", async () => {
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        return Promise.resolve(
+          jsonResponse(
+            makeTodo({ id: 9, title: "進行対象2", status: "IN_PROGRESS" }),
+            200,
+          ),
+        );
+      }
+      return Promise.resolve(
+        jsonResponse([makeTodo({ id: 9, title: "進行対象2", status: "TODO" })]),
+      );
+    });
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<TodoListPage />);
+    await user.click(
+      await screen.findByRole("button", {
+        name: "「進行対象2」を「進行中」に変更",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/todos/9",
+        expect.objectContaining({ method: "PATCH" }),
+      );
+    });
+    expect(screen.queryByText(/を完了にしました/)).not.toBeInTheDocument();
+  });
+
+  // [代表値] ステータス進行 PATCH が 404 → トースト表示＋一覧再取得（既存の 404 分岐パターンに準拠）
+  it("shows a toast and refetches when the status-advance target no longer exists (404)", async () => {
+    let todosFetchCount = 0;
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        return Promise.resolve(jsonResponse({ error: "Todo not found" }, 404));
+      }
+      todosFetchCount += 1;
+      return Promise.resolve(
+        jsonResponse([makeTodo({ id: 9, title: "消滅対象", status: "TODO" })]),
+      );
+    });
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<TodoListPage />);
+    await user.click(
+      await screen.findByRole("button", {
+        name: "「消滅対象」を「進行中」に変更",
+      }),
+    );
+
+    expect(
+      await screen.findByText("対象の TODO が見つかりませんでした"),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(todosFetchCount).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  // [代表値] ステータス進行 PATCH がその他エラー（5xx）→ 汎用エラートースト表示、
+  // ステータス表示は変更前のまま（ui.md 異常系挙動表・楽観的更新をしていないため自然にロールバック）
+  it("shows a generic error toast when the status-advance PATCH fails with a server error", async () => {
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        return Promise.resolve(
+          jsonResponse({ error: "Internal server error" }, 500),
+        );
+      }
+      return Promise.resolve(
+        jsonResponse([
+          makeTodo({ id: 9, title: "対象タスク", status: "TODO" }),
+        ]),
+      );
+    });
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<TodoListPage />);
+    await user.click(
+      await screen.findByRole("button", {
+        name: "「対象タスク」を「進行中」に変更",
+      }),
+    );
+
+    expect(
+      await screen.findByText("時間をおいて再度お試しください"),
+    ).toBeInTheDocument();
+    // 楽観的更新をしていないため、失敗後もステータスバッジは変更前（TODO→進行中への変更ラベル）のまま
+    expect(
+      screen.getByRole("button", { name: "「対象タスク」を「進行中」に変更" }),
+    ).toBeInTheDocument();
+  });
 });

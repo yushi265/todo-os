@@ -35,15 +35,15 @@ function DeleteConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-md bg-white p-4 shadow-lg sm:rounded-lg sm:p-6"
+        className="w-full max-w-md bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
       >
-        <p className="mb-4 text-gray-900">{message}</p>
+        <p className="mb-4 text-text-primary">{message}</p>
         <div className="flex justify-end gap-2">
           <button
             type="button"
             ref={cancelRef}
             onClick={onClose}
-            className="min-h-11 rounded px-4 py-2 text-gray-600 hover:bg-gray-100"
+            className="min-h-11 rounded-xl px-4 py-2 text-text-secondary hover:bg-surface"
           >
             キャンセル
           </button>
@@ -51,7 +51,7 @@ function DeleteConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={isPending}
-            className="min-h-11 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50"
+            className="min-h-11 rounded-xl bg-danger px-4 py-2 text-white hover:opacity-90 disabled:opacity-50"
           >
             削除する
           </button>
