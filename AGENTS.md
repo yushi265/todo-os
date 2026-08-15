@@ -6,6 +6,7 @@
 
 - ハーネスの全体像・使い方: [`.claude/README.md`](./.claude/README.md)
 - AI-DLC フロー（実装の進め方）: [`.claude/skills/ai-dlc-flow/SKILL.md`](./.claude/skills/ai-dlc-flow/SKILL.md)
+- Codex 実行アダプタ（Claude hooks / agents の代替手順）: [`docs/ai-dlc/codex-adapter.md`](./docs/ai-dlc/codex-adapter.md)
 - 横断ルール（実装着手前に必読・`.claude/rules/` が正）: [`risk-tiers`](./.claude/rules/risk-tiers.md) / [`spec-driven`](./.claude/rules/spec-driven.md) / [`simplicity`](./.claude/rules/simplicity.md) / [`testing`](./.claude/rules/testing.md) / [`task-and-pr`](./.claude/rules/task-and-pr.md) の 5 本
 - 用語の正本: [`docs/ai-dlc/glossary.md`](./docs/ai-dlc/glossary.md)
 

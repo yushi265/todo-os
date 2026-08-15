@@ -15,6 +15,7 @@
 |------------|------|
 | [architecture.md](./architecture.md) | プロジェクトのアーキテクチャ（レイヤー責務・依存方向）。汎用テンプレートを各プロジェクトが記述 |
 | [ai-dlc-flow-guide.md](./ai-dlc-flow-guide.md) | AI-DLC 開発フローの解説（チームメンバー・新規参入者向け。人間の承認ゲートの見方） |
+| [ai-dlc/codex-adapter.md](./ai-dlc/codex-adapter.md) | CodexでAI-DLCを実行するためのホスト差分・委譲・検証手順 |
 | [ai-dlc/glossary.md](./ai-dlc/glossary.md) | AI-DLC 用語集（ビジネスインテント / BC / ユニット / ボルト / ステージ / ゲート / Tier / SSoT）の**正本** |
 | [harness-design-decisions.md](./harness-design-decisions.md) | ハーネス（`.claude/` / 各 `CLAUDE.md` / 各 `docs/`）の構成上の決定・代替案・「やらないこと」（履歴） |
 | [spec/](./spec/) | チケット単位の薄い実装 spec（実装に必要な制約を要約） |
