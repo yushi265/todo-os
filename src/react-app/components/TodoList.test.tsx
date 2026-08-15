@@ -169,10 +169,20 @@ describe("TodoList", () => {
     const targetCard = screen.getByTestId("todo-item-2");
     expect(sourceCard).toHaveAttribute("draggable", "true");
     fireEvent.dragStart(sourceCard);
+    expect(sourceCard).toHaveClass(
+      "-translate-y-1",
+      "scale-[1.02]",
+      "shadow-[0_12px_24px_rgba(0,0,0,0.16)]",
+    );
     fireEvent.dragOver(targetCard);
     fireEvent.drop(targetCard);
 
     expect(onReorder).toHaveBeenCalledWith([2, 1]);
+    expect(sourceCard).not.toHaveClass(
+      "-translate-y-1",
+      "scale-[1.02]",
+      "shadow-[0_12px_24px_rgba(0,0,0,0.16)]",
+    );
   });
 
   // [状態遷移] キーボードでもカードを選択・移動・確定できる
@@ -200,11 +210,21 @@ describe("TodoList", () => {
     await waitFor(() => {
       expect(sourceCard).toHaveAttribute("aria-grabbed", "true");
     });
+    expect(sourceCard).toHaveClass(
+      "-translate-y-1",
+      "scale-[1.02]",
+      "shadow-[0_12px_24px_rgba(0,0,0,0.16)]",
+    );
     fireEvent.keyDown(sourceCard, { key: "ArrowDown" });
     fireEvent.keyDown(sourceCard, { key: " " });
 
     expect(onReorder).toHaveBeenCalledWith([2, 1]);
     expect(sourceCard).toHaveAttribute("aria-grabbed", "false");
+    expect(sourceCard).not.toHaveClass(
+      "-translate-y-1",
+      "scale-[1.02]",
+      "shadow-[0_12px_24px_rgba(0,0,0,0.16)]",
+    );
   });
 
   // [代表値] 期限切れの TODO は絵文字マーカーで視覚的に判別できる（AC-4）

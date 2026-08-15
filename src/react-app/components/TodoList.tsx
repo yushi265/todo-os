@@ -373,6 +373,7 @@ function TodoList({
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
               onTouchCancel={handleTouchCancel}
+              isDragging={dragId === todo.id}
               isKeyboardDragging={keyboardDragId === todo.id}
               isDragOver={dragOverId === todo.id}
             />

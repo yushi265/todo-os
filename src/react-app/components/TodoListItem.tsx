@@ -46,6 +46,7 @@ interface TodoListItemProps {
   /** ステータスアイコンクリックによる進行ショートカット（AC-2）。呼び出し元が PATCH 送信を担う。 */
   onAdvanceStatus: (todo: TodoResponse) => void;
   dragEnabled?: boolean;
+  isDragging?: boolean;
   isDragOver?: boolean;
   isKeyboardDragging?: boolean;
   onDragStart?: DragEventHandler<HTMLElement>;
@@ -77,6 +78,7 @@ function TodoListItem({
   onTouchMove,
   onTouchEnd,
   onTouchCancel,
+  isDragging = false,
   isDragOver = false,
   isKeyboardDragging = false,
   dragEnabled = false,
@@ -108,6 +110,7 @@ function TodoListItem({
       onCardClick={onClick}
       onDeleteClick={onDeleteClick}
       dragEnabled={dragEnabled}
+      isDragging={isDragging}
       isDragOver={isDragOver}
       isKeyboardDragging={isKeyboardDragging}
       onDragStart={onDragStart}
