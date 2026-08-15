@@ -8,6 +8,26 @@ afterEach(() => {
 });
 
 describe("DeleteConfirmDialog", () => {
+  // [回帰] AC-2: 削除確認ダイアログもモバイルではボトムシート、sm 以上では中央ダイアログ
+  it("has responsive bottom-sheet classes and a mobile-only handle", () => {
+    render(
+      <DeleteConfirmDialog
+        title="TODOを削除"
+        message="削除しますか？"
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "TODOを削除" });
+    expect(dialog).toHaveClass(
+      "rounded-t-[22px]",
+      "rounded-b-none",
+      "sm:rounded-[22px]",
+    );
+    expect(dialog.firstElementChild).toHaveAttribute("aria-hidden", "true");
+  });
+
   // [代表値] title/message props がそのまま表示される（TODO削除・タグ削除どちらの呼び出しでも同じコンポーネントで正しく表示される）
   it.each([
     {

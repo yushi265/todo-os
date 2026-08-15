@@ -28,6 +28,21 @@ afterEach(() => {
 });
 
 describe("TagManagementModal", () => {
+  // [回帰] AC-2: タグ管理モーダルもモバイルではボトムシート、sm 以上では中央ダイアログ
+  it("has responsive bottom-sheet classes and a mobile-only handle", () => {
+    fetchMock.mockReturnValue(new Promise(() => {}));
+
+    renderWithQueryClient(<TagManagementModal onClose={vi.fn()} />);
+
+    const dialog = screen.getByRole("dialog", { name: "タグ管理" });
+    expect(dialog).toHaveClass(
+      "rounded-t-[22px]",
+      "rounded-b-none",
+      "sm:rounded-[22px]",
+    );
+    expect(dialog.firstElementChild).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("shows a loading indicator while tags are being fetched", () => {
     fetchMock.mockReturnValue(new Promise(() => {})); // 未解決のまま
 

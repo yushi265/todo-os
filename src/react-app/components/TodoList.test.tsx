@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -12,6 +13,8 @@ import type { TodoResponse } from "../../shared/types";
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 function makeTodo(overrides: Partial<TodoResponse>): TodoResponse {
@@ -28,6 +31,15 @@ function makeTodo(overrides: Partial<TodoResponse>): TodoResponse {
     tags: [],
     ...overrides,
   };
+}
+
+function mockElementFromPoint(element: Element | null) {
+  Object.defineProperty(document, "elementFromPoint", {
+    configurable: true,
+    writable: true,
+    value: () => null,
+  });
+  return vi.spyOn(document, "elementFromPoint").mockReturnValue(element);
 }
 
 describe("TodoList", () => {
@@ -269,5 +281,225 @@ describe("TodoList", () => {
     fireEvent.drop(targetItem);
 
     expect(onReorder).toHaveBeenCalledWith([2, 1]);
+  });
+
+  // [代表値] 500ms長押し後のtouchmoveで対象行がハイライトされ、touchendで並び替える
+  it("reorders todos after a long press and touch drag", () => {
+    vi.useFakeTimers();
+    const todos = [
+      makeTodo({ id: 1, title: "先頭" }),
+      makeTodo({ id: 2, title: "後続" }),
+    ];
+    const onReorder = vi.fn();
+    render(
+      <TodoList
+        todos={todos}
+        showCompleted={false}
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled={true}
+        onReorder={onReorder}
+      />,
+    );
+    const sourceRow = screen.getByTestId("todo-item-1");
+    const targetRow = screen.getByTestId("todo-item-2");
+    const sourceHandle = within(sourceRow).getByRole("button", {
+      name: "ドラッグして並び替え",
+    });
+    mockElementFromPoint(targetRow);
+
+    fireEvent.touchStart(sourceHandle, {
+      touches: [{ clientX: 0, clientY: 0 }],
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    fireEvent.touchMove(sourceHandle, {
+      touches: [{ clientX: 20, clientY: 20 }],
+    });
+
+    expect(targetRow).toHaveClass("border-chip-border", "bg-chip-bg");
+
+    fireEvent.touchEnd(sourceHandle);
+
+    expect(onReorder).toHaveBeenCalledWith([2, 1]);
+  });
+
+  // [境界値] 長押し成立前に10pxを超えて移動するとタイマーがキャンセルされる
+  it("cancels a long press when the finger moves more than 10px", () => {
+    vi.useFakeTimers();
+    const todos = [
+      makeTodo({ id: 1, title: "先頭" }),
+      makeTodo({ id: 2, title: "後続" }),
+    ];
+    const onReorder = vi.fn();
+
+    render(
+      <TodoList
+        todos={todos}
+        showCompleted={false}
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled={true}
+        onReorder={onReorder}
+      />,
+    );
+    const sourceRow = screen.getByTestId("todo-item-1");
+    const sourceHandle = within(sourceRow).getByRole("button", {
+      name: "ドラッグして並び替え",
+    });
+    const elementFromPoint = mockElementFromPoint(
+      screen.getByTestId("todo-item-2"),
+    );
+
+    fireEvent.touchStart(sourceHandle, {
+      touches: [{ clientX: 0, clientY: 0 }],
+    });
+    fireEvent.touchMove(sourceHandle, {
+      touches: [{ clientX: 11, clientY: 0 }],
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    fireEvent.touchEnd(sourceHandle);
+
+    expect(elementFromPoint).not.toHaveBeenCalled();
+    expect(onReorder).not.toHaveBeenCalled();
+  });
+
+  // [境界値] 10px未満の移動では長押しタイマーが継続する
+  it("keeps the long press timer for movement under 10px", () => {
+    vi.useFakeTimers();
+    const todos = [
+      makeTodo({ id: 1, title: "先頭" }),
+      makeTodo({ id: 2, title: "後続" }),
+    ];
+
+    render(
+      <TodoList
+        todos={todos}
+        showCompleted={false}
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled={true}
+      />,
+    );
+    const sourceRow = screen.getByTestId("todo-item-1");
+    const targetRow = screen.getByTestId("todo-item-2");
+    const sourceHandle = within(sourceRow).getByRole("button", {
+      name: "ドラッグして並び替え",
+    });
+    const elementFromPoint = mockElementFromPoint(targetRow);
+
+    fireEvent.touchStart(sourceHandle, {
+      touches: [{ clientX: 0, clientY: 0 }],
+    });
+    fireEvent.touchMove(sourceHandle, {
+      touches: [{ clientX: 9, clientY: 0 }],
+    });
+    act(() => {
+      vi.advanceTimersByTime(499);
+    });
+    expect(elementFromPoint).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    fireEvent.touchMove(sourceHandle, {
+      touches: [{ clientX: 20, clientY: 20 }],
+    });
+
+    expect(elementFromPoint).toHaveBeenCalledWith(20, 20);
+    expect(targetRow).toHaveClass("border-chip-border", "bg-chip-bg");
+    fireEvent.touchEnd(sourceHandle);
+  });
+
+  // [境界値] 10pxちょうどの移動では長押しタイマーが継続する
+  it("keeps the long press timer for movement of exactly 10px", () => {
+    vi.useFakeTimers();
+    const todos = [
+      makeTodo({ id: 1, title: "先頭" }),
+      makeTodo({ id: 2, title: "後続" }),
+    ];
+
+    render(
+      <TodoList
+        todos={todos}
+        showCompleted={false}
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled={true}
+      />,
+    );
+    const sourceRow = screen.getByTestId("todo-item-1");
+    const targetRow = screen.getByTestId("todo-item-2");
+    const sourceHandle = within(sourceRow).getByRole("button", {
+      name: "ドラッグして並び替え",
+    });
+    const elementFromPoint = mockElementFromPoint(targetRow);
+
+    fireEvent.touchStart(sourceHandle, {
+      touches: [{ clientX: 0, clientY: 0 }],
+    });
+    fireEvent.touchMove(sourceHandle, {
+      touches: [{ clientX: 10, clientY: 0 }],
+    });
+    act(() => {
+      vi.advanceTimersByTime(499);
+    });
+    expect(elementFromPoint).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    fireEvent.touchMove(sourceHandle, {
+      touches: [{ clientX: 20, clientY: 20 }],
+    });
+
+    expect(elementFromPoint).toHaveBeenCalledWith(20, 20);
+    expect(targetRow).toHaveClass("border-chip-border", "bg-chip-bg");
+    fireEvent.touchEnd(sourceHandle);
+  });
+
+  // [デシジョンテーブル] dragEnabled=falseではタッチ長押しも開始しない
+  it("does not start touch dragging when dragging is disabled", () => {
+    vi.useFakeTimers();
+    const todo = makeTodo({ id: 1, title: "対象" });
+    const onReorder = vi.fn();
+
+    render(
+      <TodoList
+        todos={[todo]}
+        showCompleted={false}
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled={false}
+        onReorder={onReorder}
+      />,
+    );
+    const handle = within(screen.getByTestId("todo-item-1")).getByRole(
+      "button",
+      { name: "ドラッグして並び替え" },
+    );
+    const elementFromPoint = mockElementFromPoint(null);
+
+    fireEvent.touchStart(handle, {
+      touches: [{ clientX: 0, clientY: 0 }],
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    fireEvent.touchMove(handle, {
+      touches: [{ clientX: 20, clientY: 20 }],
+    });
+    fireEvent.touchEnd(handle);
+
+    expect(elementFromPoint).not.toHaveBeenCalled();
+    expect(onReorder).not.toHaveBeenCalled();
   });
 });

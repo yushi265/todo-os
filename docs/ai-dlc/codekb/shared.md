@@ -32,7 +32,8 @@
 - `useTodos()` / `useCreateTodo()` / `useUpdateTodo()` / `useDeleteTodo()`（参照: `src/react-app/hooks/useTodos.ts`）: `ApiError` で service のエラー応答（400/404/500）をラップ。一覧クエリは `retry: false`（エラー即表示のため）。
 - `useTags()` / `useCreateTag()` / `useUpdateTag()` / `useDeleteTag()` / `tagMutationErrorMessage(error)`（参照: `src/react-app/hooks/useTags.ts`）: `TagApiError` で 400/404/409 をラップ。`tagMutationErrorMessage` はエラーコード→表示文言変換の共通関数（`TagManagementModal`/`TagMultiSelect` 両方から参照）。`useDeleteTag` は成功時に `tags` と `todos` 両方のクエリキャッシュを invalidate する（タグ削除で TODO 側のタグバッジ表示も追従させるため）。
 - `useShowCompleted()`（参照: `src/react-app/hooks/useShowCompleted.ts`）: `localStorage` 連携の表示トグル状態。
-- `DeleteConfirmDialog`（参照: `src/react-app/components/DeleteConfirmDialog.tsx`）: 汎用の削除確認ダイアログ。`{title, message, onConfirm, onClose, isPending?}` を受け取る表示専用コンポーネント（mutation の呼び出し・エラー処理は呼び出し側が持つ）。`isPending` を渡さないと連打防止が効かないので、削除系コンポーネントを追加する際は必ず配線すること。
+- `DeleteConfirmDialog`（参照: `src/react-app/components/DeleteConfirmDialog.tsx`）: 汎用の削除確認ダイアログ。`{title, message, onConfirm, onClose, isPending?}` を受け取る表示専用コンポーネント（mutation の呼び出し・エラー処理は呼び出し側が持つ）。`isPending` を渡さないと連打防止が効かないので、削除系コンポーネントを追加する際は必ず配線すること。`sm:`未満でボトムシート型表示（`rounded-t-[22px] rounded-b-none` + `sm:rounded-[22px]`、上部中央に`aria-hidden="true"`のハンドルバー要素）に切り替わる（mobile-responsive-polish ユニットで追加。`TodoFormModal`/`TagManagementModal`も同パターン）。
+- 長押しタッチドラッグ（参照: `src/react-app/components/TodoList.tsx` / `TodoListItem.tsx`）: `LONG_PRESS_MS=500`・`CANCEL_THRESHOLD_PX=10`定数、`touchStateRef`（タイマーIDと開始座標を保持）、`handleTouchStart`/`handleTouchMove`/`handleTouchEnd`の3ハンドラで構成。PC版マウスD&D（`handleDrop`）と本ハンドラ（`handleTouchEnd`）の確定処理は`commitReorder(sourceId, targetId)`という共通関数に集約し、`buildFullReorderedIds`・`onReorder`呼び出しを重複させない設計（mobile-responsive-polish ユニットで導入）。
 
 ## 既知の罠
 
@@ -49,6 +50,8 @@
 
 - **`referee-check`の`post`（`npx lefthook run pre-commit`）ステップは、変更が`git add`されていない状態では対象ファイル0件で実質skipされ、lint等が検査されないまま`GREEN`と判定される**。実装後の権威検証では、`git add`（対象ファイル）してから`referee-check --layer all`を実行するか、`npx eslint .`のようなリポジトリ全体を対象にしたコマンドを別途直接実行して確認すること。この盲点により実際に`react-hooks/set-state-in-effect`のESLintエラーを1件見逃した事例あり（出典: `docs/ai-dlc/retro/manual-reorder.md`）。
 - **`.claude/aidlc/context-guard.json`の`contextWindow`はaidlc-init時点の既定値（200000）のままだと、拡張コンテキストウィンドウを使うセッションでサブエージェント起動を誤ブロックする**。実際のモデルの窓に合わせて更新すること。この設定ファイル自体の編集は自動モード分類器にブロックされる場合があり、その際はEditツールではなくBash（`sed`等）での編集が通ることがある（出典: 同上）。
+- **context-guard誤ブロックはcontextWindow値の修正だけでは再発しうる**（値が妥当でも、長時間の1セッション内で複数回のCodex委譲+3体レビューを連続実行するとusedTokensが閾値に近づき再ブロックする）。さらに設定ファイル編集自体がEdit・Bash両方でブロックされるケースもある。**この場合は設定変更を試みる前に、まず`progress.md`へ状態を確定して`/compact`することを優先する**（コンテキスト圧迫そのものが原因のため、compactだけで設定変更なしに解消することがある。出典: `docs/ai-dlc/retro/mobile-responsive-polish.md`）。
+- **React19は`touchstart`/`touchmove`/`wheel`のネイティブイベントリスナーをルートコンテナへ`{passive: true}`で登録する**（`node_modules/react-dom/cjs/react-dom-client.development.js`で確認可能）。そのため`onTouchMove`ハンドラ内で`event.preventDefault()`を呼んでも実ブラウザでは無効になりうる（パフォーマンス最適化のためのReact標準仕様）。タッチドラッグ操作でページの意図しないスクロールを防ぐには、CSSの`touch-action: none`（Tailwindの`touch-none`）をドラッグ対象要素に指定する必要がある。jsdomの`fireEvent.touchMove`はこのpassiveリスナーの実ブラウザ挙動を再現しないため、テストでは検出できない（出典: `docs/ai-dlc/retro/mobile-responsive-polish.md`）。
 
 ## Codexへの委譲（advisory・filter-sort-searchで初導入）
 
@@ -63,4 +66,4 @@
 
 ## 最終更新
 
-- manual-reorder / 2026-08-15（本コミットで追加。commit SHA はコミット後に確認）
+- mobile-responsive-polish / 2026-08-15（本コミットで追加。commit SHA はコミット後に確認）

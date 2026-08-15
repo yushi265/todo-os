@@ -57,6 +57,28 @@ function mockFetch(makeTodoResponse: () => Response, tags: TagResponse[] = []) {
 }
 
 describe("TodoFormModal", () => {
+  // [代表値] AC-1: モバイルはボトムシート、sm 以上は既存の中央ダイアログ用クラスを持つ
+  it("has responsive bottom-sheet classes and a mobile-only handle", () => {
+    mockFetch(() => jsonResponse(null, 200));
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit={false}
+        todo={null}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "TODOを作成" });
+    expect(dialog).toHaveClass(
+      "rounded-t-[22px]",
+      "rounded-b-none",
+      "sm:rounded-[22px]",
+    );
+    expect(dialog.firstElementChild).toHaveAttribute("aria-hidden", "true");
+  });
+
   // [代表値] タイトル入力＋送信 → 作成 mutation が呼ばれる
   it("calls the create mutation when title is filled and submitted", async () => {
     const user = userEvent.setup();

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import TodoListItem from "./TodoListItem";
@@ -60,6 +60,43 @@ describe("TodoListItem", () => {
     });
     expect(handle).toHaveAttribute("draggable", "true");
     expect(handle).not.toHaveClass("opacity-30");
+  });
+
+  // [代表値] ドラッグハンドルのタッチイベントが各コールバックへ伝播する
+  it("wires touch handlers to the drag handle", () => {
+    const onTouchStart = vi.fn();
+    const onTouchMove = vi.fn();
+    const onTouchEnd = vi.fn();
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={makeTodo({ id: 44, title: "タッチ対象" })}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+          dragEnabled={true}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        />
+      </ul>,
+    );
+
+    const handle = screen.getByRole("button", {
+      name: "ドラッグして並び替え",
+    });
+    fireEvent.touchStart(handle, {
+      touches: [{ clientX: 0, clientY: 0 }],
+    });
+    fireEvent.touchMove(handle, {
+      touches: [{ clientX: 1, clientY: 1 }],
+    });
+    fireEvent.touchEnd(handle);
+
+    expect(onTouchStart).toHaveBeenCalledOnce();
+    expect(onTouchMove).toHaveBeenCalledOnce();
+    expect(onTouchEnd).toHaveBeenCalledOnce();
   });
 
   // [代表値] dragEnabled=false ではドラッグハンドルが非活性

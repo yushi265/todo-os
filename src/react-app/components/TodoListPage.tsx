@@ -180,7 +180,7 @@ function TodoListPage() {
             <button
               type="button"
               onClick={() => setModalState({ type: "create" })}
-              className="min-h-11 rounded-xl bg-primary px-4 py-2 text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover"
+              className="hidden min-h-11 rounded-xl bg-primary px-4 py-2 text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover sm:inline-block"
             >
               + 追加
             </button>
@@ -257,6 +257,15 @@ function TodoListPage() {
             />
           )}
       </div>
+
+      <button
+        type="button"
+        aria-label="TODOを追加"
+        onClick={() => setModalState({ type: "create" })}
+        className="fixed bottom-6 right-6 z-10 flex h-14 w-14 min-h-11 min-w-11 items-center justify-center rounded-full bg-primary text-2xl text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover sm:hidden"
+      >
+        <span aria-hidden="true">+</span>
+      </button>
 
       {modalState && (
         <TodoFormModal

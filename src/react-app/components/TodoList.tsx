@@ -1,5 +1,5 @@
-import { useState } from "react";
-import type { DragEvent } from "react";
+import { useRef, useState } from "react";
+import type { DragEvent, TouchEvent } from "react";
 import type { TodoResponse } from "../../shared/types";
 import CompletedTodoListItem from "./CompletedTodoListItem";
 import TodoListItem from "./TodoListItem";
@@ -8,6 +8,8 @@ const COMPLETED_STATUSES: readonly TodoResponse["status"][] = [
   "DONE",
   "CANCELED",
 ];
+const LONG_PRESS_MS = 500;
+const CANCEL_THRESHOLD_PX = 10;
 
 interface TodoListProps {
   todos: TodoResponse[];
@@ -40,12 +42,29 @@ function TodoList({
 }: TodoListProps) {
   const [dragId, setDragId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
+  const touchStateRef = useRef<{
+    todoId: number;
+    startX: number;
+    startY: number;
+    timerId: ReturnType<typeof setTimeout> | null;
+  } | null>(null);
   const visibleTodos = showCompleted
     ? todos
     : todos.filter((todo) => !isCompleted(todo));
 
   const draggableTodos = visibleTodos.filter((todo) => !isCompleted(todo));
   const draggableTodoIds = new Set(draggableTodos.map((todo) => todo.id));
+
+  function commitReorder(sourceId: number, targetId: number) {
+    if (sourceId === targetId) return;
+    const ids = draggableTodos.map((todo) => todo.id);
+    const sourceIndex = ids.indexOf(sourceId);
+    const targetIndex = ids.indexOf(targetId);
+    if (sourceIndex === -1 || targetIndex === -1) return;
+    const [movedId] = ids.splice(sourceIndex, 1);
+    ids.splice(targetIndex, 0, movedId);
+    onReorder(ids);
+  }
 
   function handleDragStart(todoId: number) {
     return (event: DragEvent<HTMLButtonElement>) => {
@@ -77,21 +96,65 @@ function TodoList({
         return;
       }
 
-      const ids = draggableTodos.map((todo) => todo.id);
-      const sourceIndex = ids.indexOf(dragId);
-      const targetIndex = ids.indexOf(todoId);
-      if (sourceIndex === -1 || targetIndex === -1) {
-        setDragId(null);
-        setDragOverId(null);
-        return;
-      }
-
-      const [movedId] = ids.splice(sourceIndex, 1);
-      ids.splice(targetIndex, 0, movedId);
-      onReorder(ids);
+      commitReorder(dragId, todoId);
       setDragId(null);
       setDragOverId(null);
     };
+  }
+
+  function handleTouchStart(todoId: number) {
+    return (event: TouchEvent<HTMLButtonElement>) => {
+      if (!dragEnabled) return;
+      const touch = event.touches[0];
+      const timerId = setTimeout(() => {
+        setDragId(todoId);
+        if (touchStateRef.current) touchStateRef.current.timerId = null;
+      }, LONG_PRESS_MS);
+      touchStateRef.current = {
+        todoId,
+        startX: touch.clientX,
+        startY: touch.clientY,
+        timerId,
+      };
+    };
+  }
+
+  function handleTouchMove(event: TouchEvent<HTMLButtonElement>) {
+    const state = touchStateRef.current;
+    if (!state) return;
+    const touch = event.touches[0];
+    const dx = Math.abs(touch.clientX - state.startX);
+    const dy = Math.abs(touch.clientY - state.startY);
+
+    if (state.timerId !== null) {
+      if (dx > CANCEL_THRESHOLD_PX || dy > CANCEL_THRESHOLD_PX) {
+        clearTimeout(state.timerId);
+        touchStateRef.current = null;
+      }
+      return;
+    }
+
+    event.preventDefault();
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    const li = target?.closest('li[data-testid^="todo-item-"]');
+    const idAttr = li?.getAttribute("data-testid");
+    const todoId = idAttr ? Number(idAttr.replace("todo-item-", "")) : NaN;
+    if (!Number.isNaN(todoId) && draggableTodoIds.has(todoId)) {
+      setDragOverId(todoId);
+    }
+  }
+
+  function handleTouchEnd() {
+    const state = touchStateRef.current;
+    if (!state) return;
+    if (state.timerId !== null) {
+      clearTimeout(state.timerId);
+    } else if (dragId !== null && dragOverId !== null) {
+      commitReorder(dragId, dragOverId);
+    }
+    touchStateRef.current = null;
+    setDragId(null);
+    setDragOverId(null);
   }
 
   function handleDragEnd() {
@@ -129,6 +192,9 @@ function TodoList({
             onDragOver={handleDragOver(todo.id)}
             onDrop={handleDrop(todo.id)}
             onDragEnd={handleDragEnd}
+            onTouchStart={handleTouchStart(todo.id)}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
             isDragOver={dragOverId === todo.id}
           />
         ),

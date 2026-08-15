@@ -113,8 +113,12 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
         role="dialog"
         aria-modal="true"
         aria-label="タグ管理"
-        className="flex max-h-[90vh] w-full max-w-lg flex-col gap-4 overflow-y-auto bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
+        className="flex max-h-[90vh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-t-[22px] rounded-b-none bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
       >
+        <div
+          aria-hidden="true"
+          className="mx-auto h-1 w-10 shrink-0 rounded-full bg-border sm:hidden"
+        />
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-text-primary">タグ管理</h2>
           <button

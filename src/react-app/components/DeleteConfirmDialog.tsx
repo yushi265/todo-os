@@ -35,8 +35,12 @@ function DeleteConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-md bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
+        className="w-full max-w-md rounded-t-[22px] rounded-b-none bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
       >
+        <div
+          aria-hidden="true"
+          className="mx-auto h-1 w-10 rounded-full bg-border sm:hidden"
+        />
         <p className="mb-4 text-text-primary">{message}</p>
         <div className="flex justify-end gap-2">
           <button

@@ -40,6 +40,25 @@ afterEach(() => {
 });
 
 describe("TodoListPage", () => {
+  // [代表値] AC-3: モバイル用 FAB と sm 以上用ヘッダーボタンをレスポンシブクラスで排他表示する
+  it("uses a mobile FAB and keeps the header add button for sm and wider", async () => {
+    fetchMock.mockResolvedValue(jsonResponse([]));
+
+    renderWithQueryClient(<TodoListPage />);
+
+    const fab = await screen.findByRole("button", { name: "TODOを追加" });
+    const headerButton = screen.getByRole("button", { name: "+ 追加" });
+
+    expect(fab).toHaveClass(
+      "fixed",
+      "bottom-6",
+      "right-6",
+      "rounded-full",
+      "sm:hidden",
+    );
+    expect(headerButton).toHaveClass("hidden", "sm:inline-block");
+  });
+
   it("shows a loading indicator while the initial fetch is in flight", () => {
     fetchMock.mockReturnValue(new Promise(() => {})); // 未解決のまま
 

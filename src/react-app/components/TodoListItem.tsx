@@ -1,4 +1,4 @@
-import type { DragEventHandler } from "react";
+import type { DragEventHandler, TouchEventHandler } from "react";
 import type { TodoResponse } from "../../shared/types";
 import { isOverdue } from "../lib/isOverdue";
 import {
@@ -21,6 +21,9 @@ interface TodoListItemProps {
   onDragOver?: DragEventHandler<HTMLLIElement>;
   onDrop?: DragEventHandler<HTMLLIElement>;
   onDragEnd?: DragEventHandler<HTMLButtonElement>;
+  onTouchStart?: TouchEventHandler<HTMLButtonElement>;
+  onTouchMove?: TouchEventHandler<HTMLButtonElement>;
+  onTouchEnd?: TouchEventHandler<HTMLButtonElement>;
 }
 
 /**
@@ -36,6 +39,9 @@ function TodoListItem({
   onDragOver,
   onDrop,
   onDragEnd,
+  onTouchStart,
+  onTouchMove,
+  onTouchEnd,
   isDragOver = false,
   dragEnabled = false,
 }: TodoListItemProps) {
@@ -56,7 +62,10 @@ function TodoListItem({
         draggable={dragEnabled}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
-        className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center self-start rounded-xl text-text-tertiary sm:self-center ${dragEnabled ? "cursor-grab hover:bg-surface" : "cursor-default opacity-30"}`}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        className={`inline-flex min-h-11 min-w-11 shrink-0 touch-none items-center justify-center self-start rounded-xl text-text-tertiary sm:self-center ${dragEnabled ? "cursor-grab hover:bg-surface" : "cursor-default opacity-30"}`}
       >
         <svg
           aria-hidden="true"
