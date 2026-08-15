@@ -1,8 +1,8 @@
 // harness doctor CLI（read-only）
 // 使い方:
-//   pnpm -C .claude/aidlc doctor            … 全検査（drift テスト invoke 含む）
-//   pnpm -C .claude/aidlc doctor --fast     … deps / hooks-wiring のみ（fs 存在確認・SessionStart 用）
-//   pnpm -C .claude/aidlc doctor --json     … 機械可読出力
+//   pnpm -C .claude/aidlc run doctor --            … 全検査（drift テスト invoke 含む）
+//   pnpm -C .claude/aidlc run doctor -- --fast     … deps / hooks-wiring のみ（fs 存在確認・SessionStart 用）
+//   pnpm -C .claude/aidlc run doctor -- --json     … 機械可読出力
 //   （--quiet: ok / skip を出さない。bootstrap の「欠落時のみ NOTE」用）
 // exit code は常に 0（doctor 自体が CI / フックを壊さない）。観測に失敗した項目は skip/warn。
 

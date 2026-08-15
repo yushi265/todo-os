@@ -61,7 +61,7 @@
 			"Bash(gitleaks:*)",
 			"Bash(pnpm -C .claude/aidlc test:*)",
 			"Bash(pnpm -C .claude/aidlc typecheck:*)",
-			"Bash(pnpm -C .claude/aidlc doctor:*)",
+			"Bash(pnpm -C .claude/aidlc run doctor:*)",
 			"Bash(pnpm -C .claude/aidlc referee-check:*)"
 		],
 		"ask": [

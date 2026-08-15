@@ -38,7 +38,7 @@ hard stop は既存の lefthook / CI / 人間ゲートが担い、本群は早�
 pnpm -C .claude/aidlc install --ignore-workspace   # 依存導入（SessionStart の aidlc-bootstrap.sh が新規 checkout で自動実行）
 pnpm -C .claude/aidlc test                          # 全モジュールのテスト
 pnpm -C .claude/aidlc typecheck                     # 型チェック
-pnpm -C .claude/aidlc doctor                        # ハーネス自己診断
+pnpm -C .claude/aidlc run doctor --                 # ハーネス自己診断（pnpmの組み込みdoctorとの衝突回避）
 
 # 各モジュールの助言を得る（いずれも非強制）
 pnpm -C .claude/aidlc next examples/state.example.json
