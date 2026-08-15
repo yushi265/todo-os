@@ -7,7 +7,7 @@
 - **AC-1**: モバイル画面幅（Tailwindの`sm`ブレークポイント未満、640px未満）で、TODO作成/編集モーダルがボトムシート型（画面下部に固定・上部のみ角丸・上部中央にハンドルバー）で表示される。`sm`以上では既存の中央ダイアログ表示のまま。
 - **AC-2**: モバイル画面幅で、削除確認ダイアログ・タグ管理モーダルも同様にボトムシート型で表示される。
 - **AC-3**: モバイル画面幅で、TODO追加ボタンが画面右下固定のFAB（円形ボタン）として表示される。`sm`以上では既存のヘッダー内ボタンのまま表示される。
-- **AC-4**: モバイル画面幅で、TODOのドラッグハンドルを500ms以上長押しした後、指を動かすことでTODOの並び替えができる（`sortBy=manual`の時のみ、Unit5の既存制約を継続）。
+- **AC-4**: モバイル画面幅で、未完了TODOカードの非インタラクティブ領域を500ms以上長押しした後、指を動かすことでTODOの並び替えができる（`sortBy=manual`の時のみ、完了・中止カードは対象外）。
 - **AC-5**: 長押し中に指が10pxを超えて動いた場合、長押し判定はキャンセルされ、ページの通常スクロールとして扱われる（誤操作防止。ちょうど10pxの移動ではキャンセルされない）。
 - **AC-6**: 長押しドラッグで確定した新しい順序は、Unit5で実装済みの`onReorder`コールバック（`buildFullReorderedIds`によるマージ処理を含む）にそのまま渡され、PC版D&Dと同じAPI呼び出しに帰着する。
 - **AC-7**: PC・タブレット・スマホの主要画面（TODO一覧・フィルターバー・各モーダル）で、要素の重なり・はみ出し等のレイアウト崩れが無い。
@@ -20,7 +20,7 @@
 | `DeleteConfirmDialog` | 変更 | 同上 | props変更なし |
 | `TagManagementModal` | 変更 | 同上 | props変更なし |
 | `TodoListPage` | 変更 | ヘッダーの「+追加」ボタンを`sm:`以上のみ表示に変更し、`sm:`未満用にFAB（`fixed bottom-6 right-6 sm:hidden`）を追加 | props変更なし |
-| `TodoListItem` | 変更 | ドラッグハンドルに`onTouchStart`/`onTouchMove`/`onTouchEnd`を追加 | 新規props: `onTouchStart?: TouchEventHandler<HTMLButtonElement>` 等 |
+| `TodoListItem` | 変更 | カード本体に`onTouchStart`/`onTouchMove`/`onTouchEnd`を追加 | 新規props: `onTouchStart?: TouchEventHandler<HTMLElement>` 等 |
 | `TodoList` | 変更 | 長押し検知ロジック（タイマー・移動量キャンセル・`elementFromPoint`によるドロップ先特定）を追加 | 既存の`onReorder`/`dragEnabled`propsをそのまま使う（新規propsなし） |
 
 ## 長押しドラッグの実装ロジック（疑似コード）
@@ -106,7 +106,7 @@ function handleTouchEnd() {
 
 **重要な技術的注意（テスト実装時）**: jsdom環境には`document.elementFromPoint`の実装が無い（呼び出すと`undefined`を返すか、テストが失敗する）。`TodoList.test.tsx`でこの関数を使うテストを書く際は、`vi.spyOn(document, "elementFromPoint").mockReturnValue(...)`で対象要素をモックすること。タイマーのテストには`vi.useFakeTimers()`/`vi.advanceTimersByTime(500)`を使う。
 
-**重要な技術的注意（通常スクロールとドラッグ中のスクロール抑止の両立）**: 長押し成立前・移動量超過によるキャンセル後はページの通常スクロールを許可する必要があるため、ドラッグハンドルには`touch-action: pan-y`（Tailwindの`touch-pan-y`クラス）を指定する。長押し成立後の`touchmove`だけは、Reactのpassiveリスナーの影響を避けるため、`TodoList`が`{ passive: false, capture: true }`のネイティブ`document`リスナーで`preventDefault()`を呼び、意図しないスクロールを抑止する。`TodoList`のJSXハンドラはドロップ先の行特定を担当する。`touchcancel`ではタイマー・ドラッグ状態を破棄する。
+**重要な技術的注意（通常スクロールとドラッグ中のスクロール抑止の両立）**: 長押し成立前・移動量超過によるキャンセル後はページの通常スクロールを許可する必要があるため、未完了カード本体には通常のタッチ操作を保つ。長押し成立後の`touchmove`だけは、Reactのpassiveリスナーの影響を避けるため、`TodoList`が`{ passive: false, capture: true }`のネイティブ`document`リスナーで`preventDefault()`を呼び、意図しないスクロールを抑止する。`TodoList`のJSXハンドラはドロップ先の行特定を担当する。`touchcancel`ではタイマー・ドラッグ状態を破棄する。
 
 ## 実装配置
 
@@ -143,7 +143,7 @@ Unit5の異常系挙動（並び替えAPI失敗時のロールバック・エラ
 - [代表値] `sm`以上のビューポートで、TODO作成モーダルが既存の中央ダイアログ型クラスのまま
 - [回帰] 削除確認ダイアログ・タグ管理モーダルも同様にボトムシート/中央ダイアログの出し分けができる
 - [代表値] `sm`未満でFABが表示され、`sm`以上ではヘッダーの「+追加」ボタンが表示される（互いに排他）
-- [代表値] ドラッグハンドルを500ms長押し（`vi.advanceTimersByTime`）した後、`touchmove`で別のTODO行にオーバーラップすると、その行が`isDragOver`状態になる
+- [代表値] 未完了TODOカードを500ms長押し（`vi.advanceTimersByTime`）した後、`touchmove`で別のTODO行にオーバーラップすると、その行が`isDragOver`状態になる
 - [境界値] 長押し中（タイマー完了前）に10pxを超えて指が動くと、長押しがキャンセルされドラッグモードに入らない
 - [境界値] 長押し中に10px未満の移動では、長押しはキャンセルされずタイマーが継続する
 - [代表値] 長押しドラッグ確定（`touchend`）後、`onReorder`が正しい新順序の配列で呼ばれる

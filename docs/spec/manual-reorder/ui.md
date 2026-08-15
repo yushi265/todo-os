@@ -4,8 +4,8 @@
 
 ## 担保 AC（[index.md](./index.md) の AC からの引用）
 
-- **AC-4**: TODO一覧で、`sortBy=manual`の時のみ、表示中のTODOカード（未完了・DONE・CANCELED）全体またはドラッグハンドルからドラッグ&ドロップで並び替えができる。ドロップ確定後、並び替え結果を反映した`todoIds`で`PATCH /api/todos/reorder`を呼び出す。
-- **AC-5**: `sortBy`が`manual`以外の場合、ドラッグハンドルは非活性表示になり、ドラッグ操作は行えない。
+- **AC-4**: TODO一覧で、`sortBy=manual`の時のみ、表示中の未完了TODOカード（`TODO`/`IN_PROGRESS`）をカード全体からドラッグ&ドロップで並び替えられる。`DONE`/`CANCELED`は一覧の末尾に固定し、並び替え対象に含めない。ドロップ確定後、並び替え結果を反映した`todoIds`で`PATCH /api/todos/reorder`を呼び出す。
+- **AC-5**: `sortBy`が`manual`以外の場合、カードのドラッグ操作は行えない。6点リーダー（ドラッグハンドル）は表示しない。
 - **AC-6**: フィルター（ステータス・優先度・タグ・期限）や検索が適用され一覧が絞り込まれている状態で並び替えた場合、フィルター対象外のTODO（非表示中のもの）の相対順序を維持したまま、フィルター対象のTODOのみ新しい順序で全体の`todoIds`を再構成してAPIへ送信する（REQUIREMENTS.md 6.3節・17章）。
 - **AC-7**: 並び替えAPIが失敗した場合、一覧は元の順序のまま変化せず、エラー通知が表示される。
 - **AC-8**: フォーカス中のカードをSpaceで選択し、上下矢印で移動、Spaceで確定、Escapeでキャンセルできる。操作状態は`aria-live`で通知する。
@@ -18,7 +18,8 @@
 | `buildFullReorderedIds`（新規） | 追加 | `(allTodos: TodoResponse[], visibleIdsInNewOrder: number[]) => number[]` | AC-6のマージロジック。全体リスト内でフィルタ対象の出現位置はそのまま、そこに入るIDだけを新順序から順番に埋める（アルゴリズムは下記） |
 | `useReorderTodos`（新規） | 追加 | 標準的なTanStack Query `useMutation`ラッパー（`useDeleteTodo`と同じパターン） | `PATCH /api/todos/reorder`を呼ぶ。成功時`TODOS_QUERY_KEY`をinvalidate |
 | `useTodos`（変更） | 変更 | `useTodos(params?: ListTodosParams, options?: { enabled?: boolean })` | `enabled`オプションを追加（TanStack Queryの`enabled`にそのまま渡す）。第2引数省略時は常に有効（既存呼び出しと後方互換） |
-| `TodoListItem` / `CompletedTodoListItem` | 変更 | `{ ...既存, dragEnabled: boolean; onDragStart, onDragOver, onDrop, onDragEnd, onTouchStart, onTouchMove, onTouchEnd, onKeyDown }` | 手動並び替え時はカード全体をドラッグ可能にし、6点リーダーは互換入口として残す。DONE/CANCELEDも同じ並び替え対象とする |
+| `TodoListItem` | 変更 | `{ ...既存, dragEnabled: boolean; onDragStart, onDragOver, onDrop, onDragEnd, onTouchStart, onTouchMove, onTouchEnd, onKeyDown }` | 手動並び替え時は未完了カード全体をドラッグ可能にする。6点リーダーは表示しない |
+| `CompletedTodoListItem` | 変更 | `{ todo, onClick, onDeleteClick }` | `DONE`/`CANCELED`専用。常にドラッグ対象外で、一覧末尾に表示する |
 | `TodoList` | 変更 | `{ ...既存, dragEnabled: boolean; onReorder: (visibleIdsInNewOrder: number[]) => void }` | ドラッグ状態（`dragId`/`dragOverId`）を内部で管理し、ドロップ確定時に表示中TODOの新しい順序のIDリストを`onReorder`へ渡す |
 | `TodoListPage` | 変更 | 既存のまま | `useTodos({}, {enabled: sortBy === "manual"})`で全件（フィルタなし・manual順）を追加取得し、`handleReorder`で`buildFullReorderedIds`によるマージ→`useReorderTodos`呼び出しを行う |
 
@@ -55,16 +56,17 @@ function buildFullReorderedIds(
 - `src/react-app/lib/reorder.test.ts`（新設）
 - `src/shared/schemas.ts`（変更、service.mdと共通） — `reorderTodosSchema`
 - `src/react-app/hooks/useTodos.ts`（変更） — `useTodos`に`enabled`オプション追加、`useReorderTodos`追加
-- `src/react-app/components/TodoListItem.tsx`（変更） — ドラッグハンドル追加
+- `src/react-app/components/TodoListItem.tsx`（変更） — 未完了カード全体のドラッグ操作。6点リーダーは表示しない
+- `src/react-app/components/CompletedTodoListItem.tsx`（変更） — 完了・中止カードを常にドラッグ対象外にする
 - `src/react-app/components/TodoList.tsx`（変更） — ドラッグイベント管理・`onReorder`配線
 - `src/react-app/components/TodoListPage.tsx`（変更） — 全件取得・`handleReorder`実装
 
 ## UI/UX 方針
 
-- **画面フロー / 導線**: 既存のまま。新規導線はカード全体・ドラッグハンドル・キーボード・タッチ長押しで、一覧上で完結する。
+- **画面フロー / 導線**: 既存のまま。新規導線は未完了カード全体・キーボード・タッチ長押しで、一覧上で完結する。完了・中止カードは一覧末尾に固定する。
 - **主要操作とフィードバック**: ドラッグ中は対象行の見た目を変化させる（ドラッグオーバー中の行に薄い背景色`bg-chip-bg`+境界線`border-chip-border`、Unit3のデザインファイルの`isDragOver`パターンを踏襲）。ドロップ確定後、楽観的にローカル順序を即座に反映しつつAPI呼び出しを行う（既存のステータス進行等とは異なり、D&D操作は視覚的即時性が重要なためここのみ楽観的更新を行う。API失敗時は元の順序にロールバックしエラートースト表示）。
 - **状態設計（出し分け）**: 既存の4状態分岐（ローディング/エラー/空/成功）は不変。ドラッグ機能はデータ取得成功時のみ関与する。
-- **既存デザインシステムとの整合**: 新規トークン追加なし。ドラッグハンドルアイコン（6ドットのgripアイコン、Claude Designの`TodoOS v2.dc.html`参照）はSVGインラインで実装する。
+- **既存デザインシステムとの整合**: 新規トークン追加なし。未完了カードは完了・中止カードと同じ左端のステータスアイコン起点のレイアウトに揃える。
 
 ### レスポンシブ / アクセシビリティ
 
@@ -86,11 +88,11 @@ function buildFullReorderedIds(
 - [代表値] `buildFullReorderedIds`: フィルタで一部のみ表示中に並び替え → REQUIREMENTS.md 6.3節の例（A,B,C,D→タグでA,C抽出→C,Aに並び替え→結果C,B,A,D）を検証
 - [境界値] `buildFullReorderedIds`: 表示中TODOが0件（該当なし） → 元の順序がそのまま返る
 - [境界値] `buildFullReorderedIds`: 全TODOが表示中（フィルタなし相当） → 新順序がそのまま返る
-- [代表値] `sortBy=manual`の時、ドラッグハンドルが活性表示（`draggable=true`）
-- [デシジョンテーブル] `sortBy`が`manual`以外（`dueDate`/`priority`/`createdAt`/`updatedAt`）の時、ドラッグハンドルが非活性（`draggable=false`）
+- [代表値] `sortBy=manual`の時、未完了カード全体がドラッグ可能（`draggable=true`）で、6点リーダーは表示されない
+- [デシジョンテーブル] `sortBy`が`manual`以外（`dueDate`/`priority`/`createdAt`/`updatedAt`）の時、未完了カードが非活性（`draggable=false`）で、6点リーダーは表示されない
 - [代表値] ドラッグ&ドロップ操作後、`useReorderTodos`の`mutate`が正しい`todoIds`で呼ばれる
 - [代表値] 並び替えAPIが失敗した場合、一覧が元の順序に戻り、エラートーストが表示される
-- [代表値] DONE/CANCELEDを含む表示中のカードをドラッグして、同じ`todoIds`再構成処理で並び替えられる
-- [代表値] カード本体からドラッグを開始でき、6点リーダーからも開始できる
+- [代表値] DONE/CANCELEDは表示中の未完了カードより後ろに並び、ドラッグしても`onReorder`が呼ばれない
+- [代表値] 未完了カード本体からドラッグを開始でき、6点リーダーは表示されない
 - [代表値] Space/矢印/Escapeでキーボード並び替えができ、ライブリージョンが更新される
 - [代表値] タッチ長押しはカード本体で開始でき、ステータスボタン等では開始しない

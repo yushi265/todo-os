@@ -4,7 +4,7 @@
 
 ## 概要
 
-Claude Design（`TodoOS v2.dc.html` / `TodoOS Mobile.dc.html`、projectId: `be85ba8e-4641-4fb7-9d71-945a1e5b751e`）の配色・レイアウトに合わせて、既存の TODO 管理 UI（Unit1: todo-crud-basic, Unit2: tag-management で実装済み）を Tailwind CSS で刷新する。あわせて、デザインに含まれる新機能「ステータスバッジクリックでの進行ショートカット」と「編集モーダルの完了ショートカットボタン」を追加する。
+Claude Design（`TodoOS v2.dc.html` / `TodoOS Mobile.dc.html`、projectId: `be85ba8e-4641-4fb7-9d71-945a1e5b751e`）の配色・レイアウトに合わせて、既存の TODO 管理 UI（Unit1: todo-crud-basic, Unit2: tag-management で実装済み）を Tailwind CSS で刷新する。あわせて、デザインに含まれる新機能「未完了ステータスアイコンのクリックによる進行ショートカット」と「編集モーダルの完了ショートカットボタン」を追加する。
 
 ## 対象範囲
 
@@ -23,8 +23,8 @@ Claude Design（`TodoOS v2.dc.html` / `TodoOS Mobile.dc.html`、projectId: `be85
 ## 受け入れ基準（AC）
 
 - [ ] **AC-1**: TODO 一覧の各アイテム（未完了）が、デザイン準拠の配色・レイアウト（カード型・角丸・ステータス別バッジ色）で表示される。
-- [ ] **AC-2**: 未完了 TODO（ステータスが `TODO` または `IN_PROGRESS`）のステータスバッジをクリックすると、`TODO`→`IN_PROGRESS`→`DONE` の順に1段階だけステータスが進む。`DONE`・`CANCELED` の TODO にはこの操作 UI 自体が提供されない。
-- [ ] **AC-3**: ステータス進行操作の結果 `DONE` になった場合、「「{タイトル}」を完了にしました」というトースト通知が表示される。`IN_PROGRESS` への進行時はトースト無し。
+- [ ] **AC-2**: 未完了 TODO（ステータスが `TODO` または `IN_PROGRESS`）のステータスアイコンをクリックすると、`TODO`→`IN_PROGRESS`→`DONE` の順に1段階だけステータスが進む。一覧カードにはステータス文字を重複表示しない。`DONE`・`CANCELED` の TODO にはこの操作 UI 自体が提供されない。
+- [ ] **AC-3**: ステータス進行操作が成功した場合、変更内容のトースト通知と「元に戻す」ボタンが表示される。`DONE` 到達時のメッセージは「「{タイトル}」を完了にしました」、それ以外の進行時はステータス変更を知らせる。
 - [ ] **AC-4**: TODO 編集モーダルで、現在のステータスが `DONE` 以外の場合に「✓ 完了にする」ボタンが表示される。クリックするとフォーム内のステータス値が `DONE` に変わる（保存自体はフォームの送信操作で行う。ボタン押下だけでは PATCH は発火しない）。
 - [ ] **AC-5**: 完了・キャンセル済み TODO が、デザイン準拠の配色・レイアウト（アイコン+取り消し線タイトル、`DONE`=緑チェック / `CANCELED`=グレー×）で表示される。
 - [ ] **AC-6**: TODO 作成/編集モーダル・削除確認ダイアログ・タグ管理モーダル（タグ削除確認含む）・トースト通知が、デザイン準拠の配色・角丸・シャドウで表示される。
@@ -35,9 +35,9 @@ Claude Design（`TodoOS v2.dc.html` / `TodoOS Mobile.dc.html`、projectId: `be85
 UI レイヤーのみの変更。既存の `hooks/useTodos.ts`（`useUpdateTodo` 等）・`hooks/useTags.ts` をそのまま再利用する。ステータス進行ショートカットは既存の `useUpdateTodo()` で `PATCH /api/todos/:id`（body: `{ status: nextStatus }`）を呼ぶのみで、新規 API・新規契約は不要。
 
 ```
-ステータスバッジ click → advanceStatus(todo) → useUpdateTodo().mutate({id, status: next})
+ステータスアイコン click → advanceStatus(todo) → useUpdateTodo().mutate({id, status: next})
                                                     → 成功: TODOS_QUERY_KEY invalidate → 一覧再取得
-                                                    → next === "DONE": トースト表示
+                                                    → 変更トースト＋「元に戻す」表示
 ```
 
 ## エラー・ログ方針（横断サマリ）
@@ -77,7 +77,7 @@ UI レイヤーのみの変更。既存の `hooks/useTodos.ts`（`useUpdateTodo`
 ## 判断根拠 / 未決事項
 
 - **配色トークン化**: デザインの色（`#4f46e5` 等）は `TodoListItem`・`TagBadge`・`TodoFormModal` など複数コンポーネントで繰り返し使われる（Rule of Three 該当）ため、`@theme` でトークン定義してから参照する。個別の arbitrary value 羅列は保守性を下げるため却下。
-- **`TodoListItem` の分割**: デザインでは未完了行（ドラッグハンドル位置確保・ステータス進行ショートカット・優先度/期限/タグをフル表示）と完了済み行（アイコン+取り消し線+ステータス/更新日時+タグのみ、操作は削除のみ）で情報量・レイアウトが大きく異なる。1コンポーネント内の条件分岐で両対応すると分岐が肥大化するため、`TodoListItem`（未完了）と `CompletedTodoListItem`（完了済み）に分割する。`TodoList` が `todo.status` に応じて描画先を振り分ける。
+- **`TodoListItem` の分割**: デザインでは未完了行（ステータス進行ショートカット・優先度/期限/タグをフル表示）と完了済み行（アイコン+取り消し線+更新日時+タグのみ、操作は削除のみ）で情報量・レイアウトが大きく異なる。1コンポーネント内の条件分岐で両対応すると分岐が肥大化するため、`TodoListItem`（未完了）と `CompletedTodoListItem`（完了済み）に分割する。`TodoList` が `todo.status` に応じて描画先を振り分ける。
 - **ステータス進行ロジックの採用元**: デスクトップ版デザイン（`TodoOS v2.dc.html`）の `nextStatus(status) { return status === "TODO" ? "IN_PROGRESS" : "DONE"; }` をそのまま採用する。この関数は `TODO`/`IN_PROGRESS` の2値でのみ呼ばれる設計（`DONE`/`CANCELED` は一覧上で呼び出し UI 自体が無い）だが、実装では防御的に「`TODO`→`IN_PROGRESS`、`IN_PROGRESS`→`DONE`、それ以外は変更しない」とする（詳細は [ui.md](./ui.md)）。
 - **編集モーダルの「完了にする」ボタン採用**: モバイル版デザイン（`TodoOS Mobile.dc.html`）由来の要素だが、デスクトップでも有用な操作であり画面幅を問わず実装する（デスクトップ版デザインに無いのは省略であって禁止ではないと判断）。
 - **Unit3 に検索/フィルター/ソート/D&D の UI を含めない**: AI-DLC の「1 ユニット = 1 機能を縦に貫く」原則に従い、ツールバー UI とドラッグハンドルはそれぞれの機能ユニット（Unit4/Unit5）で機能と一体に追加する。本ユニットのヘッダーは「完了トグル・タグ管理ボタン・追加ボタン」の既存3要素の配色刷新に留める。

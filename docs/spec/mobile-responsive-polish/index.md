@@ -4,7 +4,7 @@
 
 ## 概要
 
-REQUIREMENTS.md 15章とClaude Design「TodoOS Mobile.dc.html」に基づき、PC基準で作られてきた既存UI（Unit1〜5）にモバイル専用のインタラクションパターンを追加する。ボトムシート型モーダル、FAB、ドラッグハンドルの長押し後ドラッグ（タッチイベント対応）を実装し、Unit5で持ち越したモバイル対応を完了させる。
+REQUIREMENTS.md 15章とClaude Design「TodoOS Mobile.dc.html」に基づき、PC基準で作られてきた既存UI（Unit1〜5）にモバイル専用のインタラクションパターンを追加する。ボトムシート型モーダル、FAB、未完了TODOカードの長押し後ドラッグ（タッチイベント対応）を実装し、Unit5で持ち越したモバイル対応を完了させる。
 
 ## 対象範囲
 
@@ -24,7 +24,7 @@ REQUIREMENTS.md 15章とClaude Design「TodoOS Mobile.dc.html」に基づき、P
 - [ ] **AC-1**: モバイル画面幅（Tailwindの`sm`ブレークポイント未満、640px未満）で、TODO作成/編集モーダルがボトムシート型（画面下部に固定・上部のみ角丸・上部中央にハンドルバー）で表示される。`sm`以上では既存の中央ダイアログ表示のまま。
 - [ ] **AC-2**: モバイル画面幅で、削除確認ダイアログ・タグ管理モーダルも同様にボトムシート型で表示される。
 - [ ] **AC-3**: モバイル画面幅で、TODO追加ボタンが画面右下固定のFAB（円形ボタン）として表示される。`sm`以上では既存のヘッダー内ボタンのまま表示される。
-- [ ] **AC-4**: モバイル画面幅で、TODOのドラッグハンドルを500ms以上長押しした後、指を動かすことでTODOの並び替えができる（`sortBy=manual`の時のみ、Unit5の既存制約を継続）。
+- [ ] **AC-4**: モバイル画面幅で、未完了TODOカードの非インタラクティブ領域を500ms以上長押しした後、指を動かすことでTODOの並び替えができる（`sortBy=manual`の時のみ、完了・中止カードは対象外）。
 - [ ] **AC-5**: 長押し中に指が10pxを超えて動いた場合、長押し判定はキャンセルされ、ページの通常スクロールとして扱われる（誤操作防止。ちょうど10pxの移動ではキャンセルされない）。
 - [ ] **AC-6**: 長押しドラッグで確定した新しい順序は、Unit5で実装済みの`onReorder`コールバック（`buildFullReorderedIds`によるマージ処理を含む）にそのまま渡され、PC版D&Dと同じAPI呼び出しに帰着する。
 - [ ] **AC-7**: PC・タブレット・スマホの主要画面（TODO一覧・フィルターバー・各モーダル）で、要素の重なり・はみ出し等のレイアウト崩れが無い。
@@ -32,7 +32,7 @@ REQUIREMENTS.md 15章とClaude Design「TodoOS Mobile.dc.html」に基づき、P
 ## アーキテクチャ / レイヤー間フロー
 
 ```
-ui: タッチデバイスでドラッグハンドルにtouchstart
+ui: タッチデバイスで未完了TODOカードの非インタラクティブ領域にtouchstart
   → 500msタイマー開始（10px以上の移動でキャンセル）
   → タイマー完了: ドラッグモード開始（touchmoveでdocument.elementFromPointから対象TODO行を特定）
   → touchend: ドロップ確定 → 既存のonReorder（Unit5実装、変更なし）
@@ -60,7 +60,7 @@ Unit5の異常系挙動をそのまま継承する（並び替えAPI失敗時の
 ## 既存実装との関係（再利用 / 差分 / 衝突）
 
 - **再利用**: `TodoList`のドラッグ状態管理・`onReorder`コールバック・`buildFullReorderedIds`（Unit5実装）をそのまま使う。長押しドラッグは「別の入力方式でドラッグ状態を更新する」という位置づけで、確定後のAPI呼び出し経路は完全に共通化する。Unit3で確立した`@theme`トークンをそのまま使う（新規トークン追加なし）。
-- **差分**: `TodoListItem`のドラッグハンドルにタッチイベントハンドラを追加。`TodoFormModal`/`DeleteConfirmDialog`/`TagManagementModal`のモーダルパネルクラスに`sm:`未満のボトムシート用クラスを追加。`TodoListPage`のヘッダー+追加ボタンをFAB表示と出し分け。
+- **差分**: `TodoListItem`のカード本体にタッチイベントハンドラを追加。`TodoFormModal`/`DeleteConfirmDialog`/`TagManagementModal`のモーダルパネルクラスに`sm:`未満のボトムシート用クラスを追加。`TodoListPage`のヘッダー+追加ボタンをFAB表示と出し分け。
 - **衝突**: 無し。既存のPC版レイアウト（`sm`以上）は変更しない。
 
 ## 実装に効く制約

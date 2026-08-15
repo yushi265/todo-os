@@ -4,9 +4,9 @@
 
 ## 担保 AC（[index.md](./index.md) の AC からの引用）
 
-- **AC-1**: TODO 一覧の各アイテム（未完了）が、デザイン準拠の配色・レイアウト（カード型・角丸・ステータス別バッジ色）で表示される。
-- **AC-2**: 未完了 TODO（ステータスが `TODO` または `IN_PROGRESS`）のステータスバッジをクリックすると、`TODO`→`IN_PROGRESS`→`DONE` の順に1段階だけステータスが進む。`DONE`・`CANCELED` の TODO にはこの操作 UI 自体が提供されない。
-- **AC-3**: ステータス進行操作の結果 `DONE` になった場合、「「{タイトル}」を完了にしました」というトースト通知が表示される。`IN_PROGRESS` への進行時はトースト無し。
+- **AC-1**: TODO 一覧の各アイテム（未完了）が、デザイン準拠の配色・レイアウト（カード型・角丸・ステータス別アイコン色）で表示される。
+- **AC-2**: 未完了 TODO（ステータスが `TODO` または `IN_PROGRESS`）のステータスアイコンをクリックすると、`TODO`→`IN_PROGRESS`→`DONE` の順に1段階だけステータスが進む。一覧カードにはステータス文字を重複表示しない。`DONE`・`CANCELED` の TODO にはこの操作 UI 自体が提供されない。
+- **AC-3**: ステータス進行操作が成功した場合、変更内容のトースト通知と「元に戻す」ボタンが表示される。`DONE` 到達時のメッセージは「「{タイトル}」を完了にしました」、それ以外の進行時はステータス変更を知らせる。
 - **AC-4**: TODO 編集モーダルで、現在のステータスが `DONE` 以外の場合に「✓ 完了にする」ボタンが表示される。クリックするとフォーム内のステータス値が `DONE` に変わる（保存自体はフォームの送信操作で行う。ボタン押下だけでは PATCH は発火しない）。
 - **AC-5**: 完了・キャンセル済み TODO が、デザイン準拠の配色・レイアウト（アイコン+取り消し線タイトル、`DONE`=緑チェック / `CANCELED`=グレー×）で表示される。
 - **AC-6**: TODO 作成/編集モーダル・削除確認ダイアログ・タグ管理モーダル（タグ削除確認含む）・トースト通知が、デザイン準拠の配色・角丸・シャドウで表示される。
@@ -68,7 +68,7 @@ Claude Design（`TodoOS v2.dc.html`）から抽出した確定値。既存の `@
 - ステータス・優先度別のクラス名は Tailwind の動的クラス名検出制約のため、以下の形で静的マッピングとして持つ（`lib/statusStyles.ts` 新設）:
 
 ```ts
-export const STATUS_BADGE_CLASSES: Record<TodoStatus, string> = {
+export const STATUS_ICON_CLASSES: Record<TodoStatus, string> = {
   TODO: "bg-status-todo-bg text-status-todo-fg",
   IN_PROGRESS: "bg-status-inprogress-bg text-status-inprogress-fg",
   DONE: "bg-status-done-bg text-status-done-fg",
@@ -82,9 +82,12 @@ export const PRIORITY_LABEL_CLASSES: Record<TodoPriority, { label: string; class
   MEDIUM: { label: "優先度: 中", className: "text-priority-medium" },
   LOW: { label: "優先度: 低", className: "text-priority-low" },
 };
+export const PRIORITY_ICON: Record<TodoPriority, string> = {
+  HIGH: "▲", MEDIUM: "◆", LOW: "▽",
+};
 ```
 
-既存の `TodoListItem.tsx` にあった `STATUS_LABEL`/`PRIORITY_LABEL` 定数マップはこのファイルへ統合し、`CompletedTodoListItem` からも共有する。
+既存の `TodoListItem.tsx` にあった `STATUS_LABEL`/`PRIORITY_LABEL` 定数マップはこのファイルへ統合する。一覧カードでは `STATUS_LABEL` と `PRIORITY_LABEL_CLASSES.label` を文字表示には使わず、ステータス・優先度アイコンの `aria-label`/`title` に意味を補足する。
 
 ## このレイヤーが公開する契約（外部インターフェース）
 
@@ -93,7 +96,7 @@ export const PRIORITY_LABEL_CLASSES: Record<TodoPriority, { label: string; class
 | コンポーネント | 変更種別 | props | 備考 |
 |---|---|---|---|
 | `TodoListItem` | 変更 | `{ todo: TodoResponse; onClick: (todo) => void; onDeleteClick: (todo) => void; onAdvanceStatus: (todo: TodoResponse) => void }` | **未完了専用**に用途を絞る。`onAdvanceStatus` を新規追加（呼び出し元 `TodoList` が配線）。完了済み todo は本コンポーネントに渡さない（`TodoList` 側で振り分け） |
-| `CompletedTodoListItem`（新規） | 追加 | `{ todo: TodoResponse; onClick: (todo) => void; onDeleteClick: (todo) => void }` | 完了済み専用の表示コンポーネント。アイコン+取り消し線タイトル+ステータス/更新日時+タグ、削除ボタンのみ。`updatedAt` はフォーマット変換せず SQLite の生文字列（`"YYYY-MM-DD HH:MM:SS"`）をそのまま表示する（`dueDate` 表示と同じ既存慣習に合わせる） |
+| `CompletedTodoListItem`（新規） | 追加 | `{ todo: TodoResponse; onClick: (todo) => void; onDeleteClick: (todo) => void }` | 完了済み専用の表示コンポーネント。アイコン+取り消し線タイトル+更新日時+タグ、削除ボタンのみ。ステータス文字は重複表示しない。`updatedAt` はフォーマット変換せず SQLite の生文字列（`"YYYY-MM-DD HH:MM:SS"`）をそのまま表示する（`dueDate` 表示と同じ既存慣習に合わせる） |
 | `TodoList` | 変更 | 既存のまま（`TodoListProps`）。内部で `todo.status` により `TodoListItem` / `CompletedTodoListItem` を振り分けて描画 | `onAdvanceStatus` を追加で受け取り `TodoListItem` へ配線。呼び出し元は `TodoListPage` |
 | `TodoListPage` | 変更 | 既存のまま。内部で `useUpdateTodo()` を用いて `handleAdvanceStatus` を実装し `TodoList` へ渡す | 新規 mutation 呼び出しの追加のみ。ページ外枠に `min-h-screen bg-surface` を追加（カード型 `TodoListItem`〔白背景〕とのコントラストを出すため。`--color-surface` トークンを使用） |
 | `TodoFormModal` | 変更 | 既存のまま（`TodoFormModalProps` に変更なし） | 内部に「✓ 完了にする」ボタンを追加。フォーム内 state 操作のみで新規 props 不要 |
@@ -109,7 +112,7 @@ export const PRIORITY_LABEL_CLASSES: Record<TodoPriority, { label: string; class
 ## 実装配置
 
 - `src/react-app/index.css` — `@theme` トークン追加
-- `src/react-app/lib/statusStyles.ts`（新設） — `STATUS_BADGE_CLASSES` / `STATUS_LABEL` / `PRIORITY_LABEL_CLASSES` / `nextStatus()`
+- `src/react-app/lib/statusStyles.ts`（新設） — `STATUS_ICON_CLASSES` / `STATUS_LABEL` / `PRIORITY_LABEL_CLASSES` / `PRIORITY_ICON` / `nextStatus()`
 - `src/react-app/lib/statusStyles.test.ts`（新設） — `nextStatus()` の単体テスト
 - `src/react-app/components/TodoListItem.tsx`（変更） — 未完了専用レイアウトへ刷新、`onAdvanceStatus` 追加
 - `src/react-app/components/CompletedTodoListItem.tsx`（新設） — 完了済み専用レイアウト
@@ -125,9 +128,9 @@ export const PRIORITY_LABEL_CLASSES: Record<TodoPriority, { label: string; class
 
 ## UI/UX 方針
 
-- **画面フロー / 導線**: 既存のまま変更なし（一覧 → クリックで編集モーダル、+追加ボタンで作成モーダル、タグ管理ボタンでタグモーダル、削除ボタンで確認ダイアログ）。新規導線はステータスバッジクリックによる進行のみ（一覧上で完結、画面遷移なし）。
+- **画面フロー / 導線**: 既存のまま変更なし（一覧 → クリックで編集モーダル、+追加ボタンで作成モーダル、タグ管理ボタンでタグモーダル、削除ボタンで確認ダイアログ）。新規導線はステータスアイコンのクリックによる進行のみ（一覧上で完結、画面遷移なし）。
 - **主要操作とフィードバック**:
-  - ステータスバッジクリック → 即座に楽観的な見た目変化は行わず、PATCH 成功後のクエリ再取得で反映（既存の他 mutation と同じパターンに合わせる。楽観的更新は本ユニットのスコープ外＝YAGNI）。`DONE` 到達時のみトースト表示。
+  - ステータスアイコンのクリック → 即座に楽観的な見た目変化は行わず、PATCH 成功後のクエリ再取得で反映（既存の他 mutation と同じパターンに合わせる。楽観的更新は本ユニットのスコープ外＝YAGNI）。成功時は変更前の値を復元できるトーストを表示する。
   - 「✓ 完了にする」ボタン → フォーム内 `status` を `DONE` に変更（送信するまで実際の更新は起きない）。ボタンは `status !== "DONE"` の間だけ表示。
 - **状態設計（出し分け）**: 初期・ローディング・空・エラー・成功の 4 状態分岐は既存構造を維持（[codekb/shared.md](../../ai-dlc/codekb/shared.md) 参照）。配色のみ刷新。
 - **既存デザインシステムとの整合**: 本ユニットが `@theme` トークンの初出。以降のユニット（Unit4〜6）はこのトークンを再利用する。
@@ -138,13 +141,13 @@ export const PRIORITY_LABEL_CLASSES: Record<TodoPriority, { label: string; class
 - **主対象ブレークポイント**: 既存実装の `sm:`（640px）を踏襲する。本ユニットではデスクトップ版デザイン（`TodoOS v2.dc.html`）のレイアウトを基準に、Tailwind の `sm:`/`md:` ユーティリティで最低限のリフローのみ行う（1カラム化・モーダルのタップサイズ確保）。ボトムシート型モーダル・FAB・長押し D&D 等の本格的なモバイル専用パターン（`TodoOS Mobile.dc.html`）は Unit6（mobile-responsive-polish）で扱う。
 - **タブレット方針**: PC レイアウトを維持しつつ `max-w` で幅を絞る（既存の `max-w-3xl` 相当を踏襲）。
 - **スマホ方針**: モーダルは既存同様 `items-end`→`sm:items-center` で下端シート的表示のまま（本格ボトムシート化は Unit6）。TODO カードは折り返しレイアウト（`flex-wrap`）で1カラム表示。
-- **a11y 最低限**: 全インタラクティブ要素に `min-h-11`（44px）のタップサイズを維持。ステータスバッジ（新規クリック可能要素）にも `min-h-11` 相当のヒット領域と `aria-label`（例: `「{タイトル}」を「{次のステータス}」に変更`）を付与する。「✓ 完了にする」ボタンにも明示的な `aria-label` またはボタンテキストで意図を示す。既存の aria 属性・role（AC-7）は全て維持。
+- **a11y 最低限**: 全インタラクティブ要素に `min-h-11`（44px）のタップサイズを維持。ステータスアイコン（新規クリック可能要素）にも `min-h-11` 相当のヒット領域と `aria-label`（例: `「{タイトル}」を「{次のステータス}」に変更`）を付与する。「✓ 完了にする」ボタンにも明示的な `aria-label` またはボタンテキストで意図を示す。既存の aria 属性・role（AC-7）は全て維持。
 
 ## 異常系挙動
 
 | シナリオ | 本レイヤーの挙動（エラーコード・レスポンス／表示・ログ） |
 |---|---|
-| ステータス進行 PATCH が 404（対象 TODO が既に削除済み） | 既存の `TodoListPage` の削除時 404 パターンに準拠: トースト「TODOが見つかりませんでした」相当を表示し、一覧を再取得（`refetch`）してステータスバッジ／行を消去する |
+| ステータス進行 PATCH が 404（対象 TODO が既に削除済み） | 既存の `TodoListPage` の削除時 404 パターンに準拠: トースト「TODOが見つかりませんでした」相当を表示し、一覧を再取得（`refetch`）してステータスアイコン／行を消去する |
 | ステータス進行 PATCH が 400（不正なステータス値。通常発生しないが防御的に扱う） | 汎用エラートースト表示。ステータス表示は変更前のまま（楽観的更新をしていないため自然にロールバックされる） |
 | ステータス進行 PATCH がその他エラー（5xx・ネットワーク） | 汎用エラートースト「時間をおいて再度お試しください」相当。ステータス表示は変更前のまま |
 | 「✓ 完了にする」ボタン押下後、フォーム送信が失敗（404/400） | 既存の `TodoFormModal` の送信失敗時分岐をそのまま踏襲（新規分岐は不要。フォーム内 `status` が `DONE` になった状態でエラー表示） |
@@ -155,10 +158,10 @@ export const PRIORITY_LABEL_CLASSES: Record<TodoPriority, { label: string; class
 - [状態遷移] `nextStatus("IN_PROGRESS")` → `"DONE"` を返す
 - [状態遷移/禁止] `nextStatus("DONE")` → `"DONE"`（変更しない。呼び出し元は本来この状態で呼ばないが関数として防御的に検証）
 - [状態遷移/禁止] `nextStatus("CANCELED")` → `"CANCELED"`（変更しない）
-- [代表値] 未完了 TODO 一覧で、各行のステータスバッジをクリックすると `useUpdateTodo` の `mutate` が `{id, status: "IN_PROGRESS"}` 相当で呼ばれる（`TODO` の場合）
-- [代表値] `IN_PROGRESS` の TODO でステータスバッジをクリックすると `mutate` が `{id, status: "DONE"}` で呼ばれ、成功後にトースト「「{タイトル}」を完了にしました」が表示される
-- [代表値] `TODO`→`IN_PROGRESS` の進行ではトーストが表示されない
-- [境界値/デシジョンテーブル] 完了済みセクション（`DONE`/`CANCELED`）の行にはステータスバッジのクリックハンドラ（進行 UI）が存在しない
+- [代表値] 未完了 TODO 一覧で、各行のステータスアイコンをクリックすると `useUpdateTodo` の `mutate` が `{id, status: "IN_PROGRESS"}` 相当で呼ばれる（`TODO` の場合）
+- [代表値] `IN_PROGRESS` の TODO でステータスアイコンをクリックすると `mutate` が `{id, status: "DONE"}` で呼ばれ、成功後にトースト「「{タイトル}」を完了にしました」が表示される
+- [代表値] `TODO`→`IN_PROGRESS` の進行でも、変更を元に戻せるトーストが表示される
+- [境界値/デシジョンテーブル] 完了済みセクション（`DONE`/`CANCELED`）の行にはステータスアイコンのクリックハンドラ（進行 UI）が存在しない
 - [デシジョンテーブル] 編集モーダルで `status !== "DONE"` の時「✓ 完了にする」ボタンが表示される（`TODO`/`IN_PROGRESS`/`CANCELED` の3ケース）
 - [デシジョンテーブル] 編集モーダルで `status === "DONE"` の時「✓ 完了にする」ボタンが表示されない
 - [代表値] 「✓ 完了にする」ボタンをクリックするとフォーム内のステータスセレクトの値が `DONE` になる（送信 mutation はまだ呼ばれない）
