@@ -52,7 +52,7 @@ function TodoListItem({
     <li
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`flex flex-col gap-2 rounded-2xl border p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] sm:flex-row sm:items-center sm:gap-4 ${isDragOver ? "border-chip-border bg-chip-bg" : "border-border-subtle bg-card"}`}
+      className={`flex items-center gap-2 rounded-2xl border p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] sm:gap-4 ${isDragOver ? "border-chip-border bg-chip-bg" : "border-border-subtle bg-card"}`}
       data-testid={`todo-item-${todo.id}`}
     >
       <button
@@ -65,7 +65,7 @@ function TodoListItem({
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        className={`inline-flex min-h-11 min-w-11 shrink-0 touch-none items-center justify-center self-start rounded-xl text-text-tertiary sm:self-center ${dragEnabled ? "cursor-grab hover:bg-surface" : "cursor-default opacity-30"}`}
+        className={`inline-flex min-h-11 min-w-11 shrink-0 touch-none items-center justify-center rounded-xl text-text-tertiary ${dragEnabled ? "cursor-grab hover:bg-surface" : "cursor-default opacity-30"}`}
       >
         <svg
           aria-hidden="true"
@@ -89,7 +89,7 @@ function TodoListItem({
           e.stopPropagation();
           onAdvanceStatus(todo);
         }}
-        className={`inline-flex min-h-11 shrink-0 items-center justify-center self-start rounded-full px-3 py-1 text-xs font-medium ${STATUS_BADGE_CLASSES[todo.status]}`}
+        className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_BADGE_CLASSES[todo.status]}`}
       >
         {STATUS_LABEL[todo.status]}
       </button>
@@ -97,7 +97,7 @@ function TodoListItem({
       <button
         type="button"
         onClick={() => onClick(todo)}
-        className="flex min-h-11 flex-1 flex-col gap-1 text-left"
+        className="flex min-h-11 min-w-0 flex-1 flex-col gap-1 text-left"
       >
         <span className="font-medium text-text-primary">{todo.title}</span>
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-secondary">
@@ -136,7 +136,7 @@ function TodoListItem({
           e.stopPropagation();
           onDeleteClick(todo);
         }}
-        className="min-h-11 min-w-11 shrink-0 self-start rounded-xl px-2 text-text-tertiary hover:bg-danger-bg hover:text-danger sm:self-center"
+        className="min-h-11 min-w-11 shrink-0 rounded-xl px-2 text-text-tertiary hover:bg-danger-bg hover:text-danger"
       >
         削除
       </button>

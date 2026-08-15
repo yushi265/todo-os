@@ -303,6 +303,26 @@ describe("TodoListItem", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
+  // [代表値] TODO行はモバイル幅でも縦積みにならず、常に横並びレイアウトを維持する（レイアウト崩れ防止）
+  it("keeps the row laid out horizontally instead of stacking vertically", () => {
+    const todo = makeTodo({ id: 8, title: "レイアウト確認" });
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
+      </ul>,
+    );
+
+    const row = screen.getByTestId("todo-item-8");
+    expect(row).not.toHaveClass("flex-col");
+    expect(row).toHaveClass("items-center");
+  });
+
   // [デシジョンテーブル] ステータスバッジの aria-label は現在のステータスに応じた次ステータス名を示す
   it.each([
     { status: "TODO", nextLabel: "進行中" },
