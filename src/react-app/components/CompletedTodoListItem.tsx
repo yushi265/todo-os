@@ -32,7 +32,7 @@ function CompletedTodoListItem({
 
   return (
     <li
-      className="flex items-center gap-3 rounded-2xl border border-border-subtle bg-card p-4 opacity-80 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+      className="flex animate-[todo-item-in_0.24s_ease-out] items-center gap-3 rounded-2xl border border-border-subtle bg-card p-4 opacity-80 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:gap-2 sm:p-3"
       data-testid={`todo-item-${todo.id}`}
     >
       <span
@@ -50,7 +50,7 @@ function CompletedTodoListItem({
         <span className="font-medium text-text-secondary line-through">
           {todo.title}
         </span>
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-tertiary">
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-tertiary sm:text-xs">
           <span>{STATUS_LABEL[todo.status]}</span>
           <span>{todo.updatedAt}</span>
         </span>

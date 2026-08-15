@@ -39,6 +39,7 @@ describe("TagManagementModal", () => {
       "rounded-t-[22px]",
       "rounded-b-none",
       "sm:rounded-[22px]",
+      "animate-[modal-in_0.2s_ease-out]",
     );
     expect(dialog.firstElementChild).toHaveAttribute("aria-hidden", "true");
   });
@@ -69,7 +70,10 @@ describe("TagManagementModal", () => {
     expect(
       await screen.findByText("タグの取得に失敗しました"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "再試行" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "再試行" })).toHaveClass(
+      "text-sm",
+      "sm:text-xs",
+    );
   });
 
   // [代表値] TagManagementModal: タグ一覧が表示される
@@ -95,21 +99,42 @@ describe("TagManagementModal", () => {
 
     renderWithQueryClient(<TagManagementModal onClose={vi.fn()} />);
 
+    expect(screen.getByRole("heading", { name: "タグ管理" })).toHaveClass(
+      "text-lg",
+      "sm:text-base",
+    );
     expect(screen.getByRole("button", { name: "閉じる" })).toHaveClass(
       "rounded-full",
     );
     expect(await screen.findByRole("listitem")).toHaveClass(
       "rounded-xl",
       "border-border-subtle",
+      "sm:px-2.5",
+      "sm:py-1.5",
+    );
+    expect(screen.getByText("新規タグ名")).toHaveClass("text-sm", "sm:text-xs");
+    expect(screen.getByLabelText("新規タグ名")).toHaveClass(
+      "text-sm",
+      "sm:text-xs",
     );
     expect(screen.getByRole("button", { name: "追加" })).toHaveClass(
       "font-bold",
+    );
+    expect(screen.getByRole("button", { name: "「仕事」を編集" })).toHaveClass(
+      "text-sm",
+      "sm:text-xs",
+    );
+    expect(screen.getByRole("button", { name: "「仕事」を削除" })).toHaveClass(
+      "text-sm",
+      "sm:text-xs",
     );
 
     await user.click(await screen.findByLabelText("「仕事」を編集"));
 
     expect(screen.getByLabelText("「仕事」の名前を編集")).toHaveClass(
       "border-primary",
+      "text-sm",
+      "sm:text-xs",
     );
   });
 
@@ -338,6 +363,12 @@ describe("TagManagementModal", () => {
     expect(screen.getByRole("status")).toHaveClass(
       "shadow-[0_12px_36px_rgba(0,0,0,0.32)]",
       "animate-[toast-in_0.18s_ease-out]",
+      "sm:px-3",
+      "sm:py-2",
+    );
+    expect(screen.getByText("対象のタグが見つかりませんでした")).toHaveClass(
+      "text-sm",
+      "sm:text-xs",
     );
   });
 });

@@ -195,4 +195,46 @@ describe("CompletedTodoListItem", () => {
 
     expect(screen.queryByTestId("todo-tags-3")).not.toBeInTheDocument();
   });
+
+  // [代表値] 完了済みTODO行とメタ情報はsm以上でコンパクトになる
+  it("applies compact responsive classes to the row and metadata", () => {
+    const todo = makeTodo({
+      id: 10,
+      title: "完了密度調整確認",
+      updatedAt: "2026-08-10T00:00:00.000Z",
+    });
+
+    render(
+      <ul>
+        <CompletedTodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+        />
+      </ul>,
+    );
+
+    const row = screen.getByTestId("todo-item-10");
+    const metadata = screen.getByText(todo.updatedAt).parentElement;
+
+    expect(row).toHaveClass("gap-3", "sm:gap-2");
+    expect(row).toHaveClass("p-4", "sm:p-3");
+    expect(metadata).toHaveClass("text-sm", "sm:text-xs");
+  });
+
+  it("applies the subtle row entrance animation", () => {
+    render(
+      <ul>
+        <CompletedTodoListItem
+          todo={makeTodo({ id: 11 })}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+        />
+      </ul>,
+    );
+
+    expect(screen.getByTestId("todo-item-11")).toHaveClass(
+      "animate-[todo-item-in_0.24s_ease-out]",
+    );
+  });
 });

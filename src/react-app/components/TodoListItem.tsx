@@ -1,6 +1,6 @@
 import type { DragEventHandler, TouchEventHandler } from "react";
 import type { TodoResponse } from "../../shared/types";
-import { isOverdue } from "../lib/isOverdue";
+import { dueDateStatus, type DueDateStatus } from "../lib/dueDateStatus";
 import {
   nextStatus,
   PRIORITY_LABEL_CLASSES,
@@ -8,6 +8,27 @@ import {
   STATUS_LABEL,
 } from "../lib/statusStyles";
 import TagBadge from "./TagBadge";
+
+const DUE_DATE_STATUS_CLASSES: Record<Exclude<DueDateStatus, null>, string> = {
+  overdue: "font-semibold text-danger",
+  today: "font-semibold text-primary",
+  soon: "font-medium text-priority-medium",
+};
+
+const DUE_DATE_STATUS_ARIA_LABELS: Record<
+  Exclude<DueDateStatus, null>,
+  string
+> = {
+  overdue: "期限切れ",
+  today: "本日期限",
+  soon: "近日",
+};
+
+const DUE_DATE_STATUS_MARKERS: Record<Exclude<DueDateStatus, null>, string> = {
+  overdue: "⚠️",
+  today: "📅",
+  soon: "⏰",
+};
 
 interface TodoListItemProps {
   todo: TodoResponse;
@@ -47,14 +68,14 @@ function TodoListItem({
   isDragOver = false,
   dragEnabled = false,
 }: TodoListItemProps) {
-  const overdue = isOverdue(todo.dueDate, todo.status);
+  const dueStatus = dueDateStatus(todo.dueDate, todo.status);
   const next = nextStatus(todo.status);
 
   return (
     <li
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`flex items-center gap-2 rounded-2xl border p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] sm:gap-4 ${isDragOver ? "border-chip-border bg-chip-bg" : "border-border-subtle bg-card"}`}
+      className={`flex animate-[todo-item-in_0.24s_ease-out] items-center gap-2 rounded-2xl border p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] sm:gap-1.5 sm:p-3 ${isDragOver ? "border-chip-border bg-chip-bg" : "border-border-subtle bg-card"}`}
       data-testid={`todo-item-${todo.id}`}
     >
       <button
@@ -93,7 +114,7 @@ function TodoListItem({
         >
           <span className="font-medium text-text-primary">{todo.title}</span>
         </button>
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-secondary">
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-secondary sm:text-xs">
           <button
             type="button"
             aria-label={`「${todo.title}」を「${STATUS_LABEL[next]}」に変更`}
@@ -101,7 +122,7 @@ function TodoListItem({
               e.stopPropagation();
               onAdvanceStatus(todo);
             }}
-            className={`inline-flex shrink-0 items-center justify-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_BADGE_CLASSES[todo.status]}`}
+            className={`inline-flex shrink-0 items-center justify-center rounded-full px-3 py-1 text-xs font-medium transition-transform active:scale-[0.98] ${STATUS_BADGE_CLASSES[todo.status]}`}
           >
             {STATUS_LABEL[todo.status]}
           </button>
@@ -114,12 +135,24 @@ function TodoListItem({
           >
             {todo.priority ? PRIORITY_LABEL_CLASSES[todo.priority].label : "-"}
           </span>
-          <span className={overdue ? "font-semibold text-danger" : undefined}>
+          <span
+            data-testid={dueStatus ? `due-status-${dueStatus}` : undefined}
+            className={
+              dueStatus ? DUE_DATE_STATUS_CLASSES[dueStatus] : undefined
+            }
+          >
+            {dueStatus && (
+              <span
+                role="img"
+                aria-label={DUE_DATE_STATUS_ARIA_LABELS[dueStatus]}
+                data-testid={`due-status-marker-${dueStatus}`}
+                className="mr-1"
+              >
+                {DUE_DATE_STATUS_MARKERS[dueStatus]}
+              </span>
+            )}
             {todo.dueDate ?? "-"}
           </span>
-          {overdue && (
-            <span className="font-semibold text-danger">期限切れ</span>
-          )}
         </span>
         {todo.tags.length > 0 && (
           <span

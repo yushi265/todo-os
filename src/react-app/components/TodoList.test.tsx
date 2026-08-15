@@ -43,6 +43,21 @@ function mockElementFromPoint(element: Element | null) {
 }
 
 describe("TodoList", () => {
+  // [代表値] TODO一覧の行間はsm以上でコンパクトになる
+  it("applies a compact responsive gap to the list", () => {
+    render(
+      <TodoList
+        todos={[makeTodo({ id: 1, title: "一覧間隔確認" })]}
+        showCompleted={false}
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("list")).toHaveClass("gap-3", "sm:gap-2");
+  });
+
   // [代表値] 終了済みトグル OFF で DONE/CANCELED の TODO が一覧に表示されない
   it("hides DONE/CANCELED todos when showCompleted is false", () => {
     const todos = [
@@ -89,7 +104,7 @@ describe("TodoList", () => {
     expect(screen.getByText("中止タスク")).toBeInTheDocument();
   });
 
-  // [代表値] 期限切れの TODO は一覧上で視覚的に判別できる（AC-4）
+  // [代表値] 期限切れの TODO は絵文字マーカーで視覚的に判別できる（AC-4）
   it("marks an overdue todo visually", () => {
     const overdueTodo = makeTodo({
       id: 1,
@@ -108,7 +123,7 @@ describe("TodoList", () => {
       />,
     );
 
-    expect(screen.getByText(/期限切れ/)).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "期限切れ" })).toBeInTheDocument();
   });
 
   // [デシジョンテーブル] 未完了（TODO/IN_PROGRESS）は TodoListItem（ステータス進行 UI あり）で描画される

@@ -178,7 +178,7 @@ function TodoFilterBar({
   return (
     <section
       aria-label="TODOの検索・フィルター・ソート"
-      className="mb-4 flex flex-wrap items-center gap-2"
+      className="mb-4 flex flex-wrap items-center gap-2 sm:gap-1.5"
     >
       <div className="relative min-w-0 flex-1">
         <svg
@@ -210,7 +210,7 @@ function TodoFilterBar({
           placeholder="タイトル・説明を検索"
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
-          className="min-h-11 w-full rounded-xl border border-border bg-card py-2 pl-9 pr-3 text-text-primary placeholder:text-text-tertiary focus:border-primary focus:outline-none sm:min-w-52"
+          className="min-h-11 w-full rounded-xl border border-border bg-card py-2 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary focus:outline-none sm:py-1.5 sm:text-xs sm:min-w-52"
         />
       </div>
 
@@ -220,12 +220,12 @@ function TodoFilterBar({
           return (
             <div
               key={attribute}
-              className="inline-flex min-h-11 items-center rounded-full border border-chip-border bg-chip-bg text-sm font-medium text-chip-fg"
+              className="inline-flex min-h-11 items-center rounded-full border border-chip-border bg-chip-bg text-sm font-medium text-chip-fg sm:text-xs"
             >
               <button
                 type="button"
                 onClick={() => openValueMenu(attribute)}
-                className="min-h-11 rounded-l-full px-3 py-1 hover:bg-chip-border"
+                className="min-h-11 rounded-l-full px-3 py-1 sm:px-2.5 hover:bg-chip-border"
               >
                 {FILTER_ATTRIBUTE_LABELS[attribute]}:{" "}
                 {filterValueLabel(attribute, value, tags)}
@@ -248,7 +248,7 @@ function TodoFilterBar({
           aria-expanded={isFilterMenuOpen}
           onClick={openAttributeMenu}
           disabled={availableAttributes.length === 0}
-          className="min-h-11 rounded-full border border-dashed border-border bg-card px-3 py-2 text-sm text-text-secondary hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-11 rounded-full border border-dashed border-border bg-card px-3 py-2 text-sm text-text-secondary hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5 sm:py-1.5 sm:text-xs"
         >
           + フィルター
         </button>
@@ -266,7 +266,7 @@ function TodoFilterBar({
                   type="button"
                   role="menuitem"
                   onClick={() => setSelectedAttribute(attribute)}
-                  className="min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface"
+                  className="min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface sm:text-xs"
                 >
                   {FILTER_ATTRIBUTE_LABELS[attribute]}
                 </button>
@@ -277,7 +277,7 @@ function TodoFilterBar({
                   type="button"
                   role="menuitem"
                   onClick={openAttributeMenu}
-                  className="min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-text-tertiary hover:bg-surface"
+                  className="min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-text-tertiary hover:bg-surface sm:text-xs"
                 >
                   ← 属性を選び直す
                 </button>
@@ -287,13 +287,13 @@ function TodoFilterBar({
                     type="button"
                     role="menuitem"
                     onClick={() => handleValueSelect(option.value)}
-                    className="min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface"
+                    className="min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface sm:text-xs"
                   >
                     {option.label}
                   </button>
                 ))}
                 {selectedAttribute === "tagId" && tags.length === 0 && (
-                  <p className="px-3 py-2 text-sm text-text-tertiary">
+                  <p className="px-3 py-2 text-sm text-text-tertiary sm:text-xs">
                     タグはありません
                   </p>
                 )}
@@ -302,7 +302,7 @@ function TodoFilterBar({
             <button
               type="button"
               onClick={closeFilterMenu}
-              className="mt-1 min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-text-tertiary hover:bg-surface"
+              className="mt-1 min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-text-tertiary hover:bg-surface sm:text-xs"
             >
               閉じる
             </button>
@@ -311,7 +311,10 @@ function TodoFilterBar({
       </div>
 
       <div className="flex min-h-11 items-center gap-2 sm:ml-auto">
-        <label htmlFor="todo-sort" className="text-sm text-text-quaternary">
+        <label
+          htmlFor="todo-sort"
+          className="text-sm text-text-quaternary sm:text-xs"
+        >
           並び順
         </label>
         <select
@@ -324,7 +327,7 @@ function TodoFilterBar({
               nextSortBy === "manual" ? "asc" : sortOrder,
             );
           }}
-          className="min-h-11 rounded-full border border-border bg-card px-3 py-2 text-sm text-text-primary"
+          className="min-h-11 rounded-full border border-border bg-card px-3 py-2 text-sm text-text-primary sm:px-2.5 sm:py-1.5 sm:text-xs"
         >
           {SORT_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -341,7 +344,7 @@ function TodoFilterBar({
             onClick={() =>
               onSortChange(sortBy, sortOrder === "asc" ? "desc" : "asc")
             }
-            className="min-h-11 min-w-11 rounded-full border border-border bg-card px-3 py-2 text-lg text-text-secondary hover:bg-surface"
+            className="min-h-11 min-w-11 rounded-full border border-border bg-card px-3 py-2 text-lg text-text-secondary hover:bg-surface sm:px-2.5 sm:py-1.5 sm:text-base"
           >
             {sortOrder === "asc" ? "↑" : "↓"}
           </button>

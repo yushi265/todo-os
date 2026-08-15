@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import Button from "./ui/button";
 
 interface DeleteConfirmDialogProps {
   title: string;
@@ -35,26 +36,26 @@ function DeleteConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-md rounded-[22px] bg-card p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)]"
+        className="w-full max-w-md animate-[modal-in_0.2s_ease-out] rounded-[22px] bg-card p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)]"
       >
-        <p className="mb-4 text-text-primary">{message}</p>
+        <p className="mb-4 text-sm text-text-primary sm:text-xs">{message}</p>
         <div className="flex justify-end gap-2">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             ref={cancelRef}
             onClick={onClose}
-            className="min-h-11 rounded-xl px-4 py-2 text-text-secondary hover:bg-surface"
+            className="px-4 py-2"
           >
             キャンセル
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="destructive"
             onClick={onConfirm}
             disabled={isPending}
-            className="min-h-11 rounded-xl bg-danger px-4 py-2 font-bold text-white hover:opacity-90 disabled:opacity-50"
+            className="font-bold"
           >
             削除する
-          </button>
+          </Button>
         </div>
       </div>
     </div>

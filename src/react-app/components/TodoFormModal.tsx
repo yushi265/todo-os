@@ -180,20 +180,20 @@ function TodoFormModal({
         role="dialog"
         aria-modal="true"
         aria-label={isEdit ? "TODOを編集" : "TODOを作成"}
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[22px] rounded-b-none bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
+        className="animate-[modal-in_0.2s_ease-out] max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[22px] rounded-b-none bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
       >
         <div
           aria-hidden="true"
           className="mx-auto h-1 w-10 rounded-full bg-border sm:hidden"
         />
-        <h2 className="mb-4 text-lg font-semibold text-text-primary">
+        <h2 className="mb-4 text-lg font-semibold text-text-primary sm:text-base">
           {isEdit ? "TODOを編集" : "TODOを作成"}
         </h2>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-3">
           <div className="flex flex-col gap-1">
             <label
               htmlFor="todo-title"
-              className="text-sm font-medium text-text-secondary"
+              className="text-sm font-medium text-text-secondary sm:text-xs"
             >
               タイトル
             </label>
@@ -206,7 +206,7 @@ function TodoFormModal({
               onChange={(e) =>
                 setValues((v) => ({ ...v, title: e.target.value }))
               }
-              className="min-h-11 rounded-xl border border-border px-3 py-2 text-text-primary"
+              className="min-h-11 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
             />
             {fieldErrors.title && (
               <p className="text-sm text-danger">{fieldErrors.title}</p>
@@ -216,7 +216,7 @@ function TodoFormModal({
           <div className="flex flex-col gap-1">
             <label
               htmlFor="todo-description"
-              className="text-sm font-medium text-text-secondary"
+              className="text-sm font-medium text-text-secondary sm:text-xs"
             >
               説明
             </label>
@@ -227,14 +227,14 @@ function TodoFormModal({
               onChange={(e) =>
                 setValues((v) => ({ ...v, description: e.target.value }))
               }
-              className="rounded-xl border border-border px-3 py-2 text-text-primary"
+              className="rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
             />
           </div>
 
           <div className="flex flex-col gap-1">
             <label
               htmlFor="todo-priority"
-              className="text-sm font-medium text-text-secondary"
+              className="text-sm font-medium text-text-secondary sm:text-xs"
             >
               優先度
             </label>
@@ -247,7 +247,7 @@ function TodoFormModal({
                   priority: e.target.value as PriorityValue,
                 }))
               }
-              className="min-h-11 rounded-xl border border-border px-3 py-2 text-text-primary"
+              className="min-h-11 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
             >
               <option value="">未設定</option>
               <option value="HIGH">高</option>
@@ -259,7 +259,7 @@ function TodoFormModal({
           <div className="flex flex-col gap-1">
             <label
               htmlFor="todo-due-date"
-              className="text-sm font-medium text-text-secondary"
+              className="text-sm font-medium text-text-secondary sm:text-xs"
             >
               期限
             </label>
@@ -270,7 +270,7 @@ function TodoFormModal({
               onChange={(e) =>
                 setValues((v) => ({ ...v, dueDate: e.target.value }))
               }
-              className="min-h-11 rounded-xl border border-border px-3 py-2 text-text-primary"
+              className="min-h-11 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
             />
             {fieldErrors.dueDate && (
               <p className="text-sm text-danger">{fieldErrors.dueDate}</p>
@@ -289,7 +289,7 @@ function TodoFormModal({
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="todo-status"
-                className="text-sm font-medium text-text-secondary"
+                className="text-sm font-medium text-text-secondary sm:text-xs"
               >
                 ステータス
               </label>
@@ -303,7 +303,7 @@ function TodoFormModal({
                       status: e.target.value as TodoStatus,
                     }))
                   }
-                  className="min-h-11 flex-1 rounded-xl border border-border px-3 py-2 text-text-primary"
+                  className="min-h-11 flex-1 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
                 >
                   {STATUS_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -317,7 +317,7 @@ function TodoFormModal({
                   <button
                     type="button"
                     onClick={() => setValues((v) => ({ ...v, status: "DONE" }))}
-                    className="min-h-11 shrink-0 rounded-xl bg-status-done-bg px-3 text-sm font-medium text-status-done-fg hover:opacity-90"
+                    className="min-h-11 shrink-0 rounded-xl bg-status-done-bg px-3 text-sm font-medium text-status-done-fg hover:opacity-90 sm:text-xs"
                   >
                     ✓ 完了にする
                   </button>
@@ -332,18 +332,18 @@ function TodoFormModal({
             </p>
           )}
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-2 sm:gap-1.5">
             <button
               type="button"
               onClick={onClose}
-              className="min-h-11 rounded-xl px-4 py-2 text-text-secondary hover:bg-surface"
+              className="min-h-11 rounded-xl px-4 py-2 text-sm text-text-secondary hover:bg-surface sm:px-3 sm:py-1.5 sm:text-xs"
             >
               キャンセル
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="min-h-11 rounded-xl bg-primary px-4 py-2 font-bold text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover disabled:opacity-50"
+              className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white shadow-[0_4px_14px_rgba(0,0,0,0.12)] hover:bg-primary-hover disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-xs"
             >
               保存
             </button>

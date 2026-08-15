@@ -77,9 +77,83 @@ describe("TodoFormModal", () => {
       "rounded-t-[22px]",
       "rounded-b-none",
       "sm:rounded-[22px]",
+      "animate-[modal-in_0.2s_ease-out]",
     );
     expect(dialog.parentElement).toHaveClass("backdrop-blur-sm");
     expect(dialog.firstElementChild).toHaveAttribute("aria-hidden", "true");
+  });
+
+  // [代表値] AC-4/AC-7: sm 以上で内部要素を1段階コンパクトにし、外枠とタッチターゲットは維持する
+  it("adds compact responsive classes to the form internals", () => {
+    const todo = makeTodo({ status: "TODO" });
+    mockFetch(() => jsonResponse(todo, 200));
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit={true}
+        todo={todo}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "TODOを編集" });
+    const form = dialog.querySelector("form");
+    expect(dialog).toHaveClass(
+      "animate-[modal-in_0.2s_ease-out]",
+      "p-4",
+      "sm:p-6",
+      "rounded-t-[22px]",
+      "rounded-b-none",
+      "sm:rounded-[22px]",
+    );
+    expect(screen.getByRole("heading", { name: "TODOを編集" })).toHaveClass(
+      "text-lg",
+      "sm:text-base",
+    );
+    expect(form).toHaveClass("gap-4", "sm:gap-3");
+
+    for (const label of ["タイトル", "説明", "優先度", "期限", "ステータス"]) {
+      expect(screen.getByText(label, { selector: "label" })).toHaveClass(
+        "text-sm",
+        "sm:text-xs",
+      );
+    }
+
+    for (const field of [
+      screen.getByLabelText("タイトル"),
+      screen.getByLabelText("説明"),
+      screen.getByLabelText("優先度"),
+      screen.getByLabelText("期限"),
+      screen.getByLabelText("ステータス"),
+    ]) {
+      expect(field).toHaveClass("text-sm", "sm:text-xs");
+    }
+
+    expect(screen.getByRole("button", { name: "✓ 完了にする" })).toHaveClass(
+      "text-sm",
+      "sm:text-xs",
+      "min-h-11",
+    );
+    expect(form?.lastElementChild).toHaveClass("gap-2", "sm:gap-1.5");
+    expect(screen.getByRole("button", { name: "キャンセル" })).toHaveClass(
+      "text-sm",
+      "sm:text-xs",
+      "px-4",
+      "py-2",
+      "sm:px-3",
+      "sm:py-1.5",
+      "min-h-11",
+    );
+    expect(screen.getByRole("button", { name: "保存" })).toHaveClass(
+      "text-sm",
+      "sm:text-xs",
+      "px-4",
+      "py-2",
+      "sm:px-3",
+      "sm:py-1.5",
+      "min-h-11",
+    );
   });
 
   // [代表値] AC-3: 説明欄は初期表示3行

@@ -10,6 +10,7 @@ import {
   useUpdateTag,
 } from "../hooks/useTags";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
+import Button from "./ui/button";
 
 interface TagManagementModalProps {
   onClose: () => void;
@@ -113,22 +114,25 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
         role="dialog"
         aria-modal="true"
         aria-label="タグ管理"
-        className="flex max-h-[90vh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-t-[22px] rounded-b-none bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
+        className="flex max-h-[90vh] w-full max-w-lg animate-[modal-in_0.2s_ease-out] flex-col gap-4 overflow-y-auto rounded-t-[22px] rounded-b-none bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
       >
         <div
           aria-hidden="true"
           className="mx-auto h-1 w-10 shrink-0 rounded-full bg-border sm:hidden"
         />
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-text-primary">タグ管理</h2>
-          <button
-            type="button"
+          <h2 className="text-lg font-semibold text-text-primary sm:text-base">
+            タグ管理
+          </h2>
+          <Button
+            variant="ghost"
+            size="icon"
             aria-label="閉じる"
             onClick={onClose}
-            className="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-surface text-text-tertiary hover:text-text-primary"
+            className="flex items-center justify-center rounded-full bg-surface text-text-tertiary hover:text-text-primary"
           >
             ×
-          </button>
+          </Button>
         </div>
 
         {isLoading && (
@@ -143,7 +147,7 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
             <button
               type="button"
               onClick={() => refetch()}
-              className="min-h-11 rounded-xl border border-border bg-card px-4 py-2 text-text-secondary hover:bg-surface"
+              className="min-h-11 rounded-xl border border-border bg-card px-4 py-2 text-sm text-text-secondary hover:bg-surface sm:text-xs"
             >
               再試行
             </button>
@@ -161,7 +165,7 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
                 {tags.map((tag) => (
                   <li
                     key={tag.id}
-                    className="flex min-h-11 items-center gap-2 rounded-xl border border-border-subtle bg-surface px-3 py-2"
+                    className="flex min-h-11 items-center gap-2 rounded-xl border border-border-subtle bg-surface px-3 py-2 sm:px-2.5 sm:py-1.5"
                   >
                     {editingId === tag.id ? (
                       <input
@@ -178,7 +182,7 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
                           }
                         }}
                         onBlur={() => commitEdit(tag)}
-                        className="min-h-11 flex-1 rounded-xl border border-primary px-2 py-1 text-text-primary"
+                        className="min-h-11 flex-1 rounded-xl border border-primary px-2 py-1 text-sm text-text-primary sm:text-xs"
                       />
                     ) : (
                       <>
@@ -189,7 +193,7 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
                           type="button"
                           aria-label={`「${tag.name}」を編集`}
                           onClick={() => startEdit(tag)}
-                          className="min-h-11 min-w-11 rounded-xl px-2 text-text-tertiary hover:bg-surface"
+                          className="min-h-11 min-w-11 rounded-xl px-2 text-sm text-text-tertiary hover:bg-surface sm:text-xs"
                         >
                           編集
                         </button>
@@ -197,7 +201,7 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
                           type="button"
                           aria-label={`「${tag.name}」を削除`}
                           onClick={() => setDeleteTarget(tag)}
-                          className="min-h-11 min-w-11 rounded-xl px-2 text-text-tertiary hover:bg-danger-bg hover:text-danger"
+                          className="min-h-11 min-w-11 rounded-xl px-2 text-sm text-text-tertiary hover:bg-danger-bg hover:text-danger sm:text-xs"
                         >
                           削除
                         </button>
@@ -218,7 +222,7 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
         <div className="flex flex-col gap-1 border-t border-border-subtle pt-4">
           <label
             htmlFor="new-tag-name"
-            className="text-sm font-medium text-text-secondary"
+            className="text-sm font-medium text-text-secondary sm:text-xs"
           >
             新規タグ名
           </label>
@@ -230,16 +234,15 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
               maxLength={50}
               value={newTagName}
               onChange={(e) => setNewTagName(e.target.value)}
-              className="min-h-11 flex-1 rounded-xl border border-border px-3 py-2 text-text-primary"
+              className="min-h-11 flex-1 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
             />
-            <button
-              type="button"
+            <Button
               onClick={handleCreateSubmit}
               disabled={createMutation.isPending}
-              className="min-h-11 rounded-xl bg-primary px-4 py-2 font-bold text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover disabled:opacity-50"
+              className="font-bold"
             >
               追加
-            </button>
+            </Button>
           </div>
           {createError && (
             <p role="alert" className="text-sm text-danger">
@@ -263,9 +266,9 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-x-0 bottom-4 mx-auto flex w-fit items-center gap-3 rounded-xl bg-text-primary px-4 py-3 text-white shadow-[0_12px_36px_rgba(0,0,0,0.32)] animate-[toast-in_0.18s_ease-out]"
+          className="fixed inset-x-0 bottom-4 mx-auto flex w-fit items-center gap-3 rounded-xl bg-text-primary px-4 py-3 text-white shadow-[0_12px_36px_rgba(0,0,0,0.32)] animate-[toast-in_0.18s_ease-out] sm:px-3 sm:py-2"
         >
-          <span>{toast}</span>
+          <span className="text-sm sm:text-xs">{toast}</span>
           <button
             type="button"
             aria-label="閉じる"

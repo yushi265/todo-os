@@ -98,6 +98,7 @@ describe("TagMultiSelect", () => {
     const badge = await screen.findByRole("button", { name: "#仕事" });
     expect(badge).toHaveAttribute("aria-pressed", "true");
     expect(badge).toHaveClass("bg-primary");
+    expect(badge).toHaveClass("sm:text-xs");
 
     await user.click(badge);
 

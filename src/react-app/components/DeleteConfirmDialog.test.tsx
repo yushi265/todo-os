@@ -29,7 +29,7 @@ describe("DeleteConfirmDialog", () => {
     expect(overlay).not.toHaveClass("items-end", "sm:items-center");
     expect(dialog).toHaveAttribute(
       "class",
-      "w-full max-w-md rounded-[22px] bg-card p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)]",
+      "w-full max-w-md animate-[modal-in_0.2s_ease-out] rounded-[22px] bg-card p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)]",
     );
   });
 
@@ -62,6 +62,23 @@ describe("DeleteConfirmDialog", () => {
 
     expect(screen.getByRole("button", { name: "削除する" })).toHaveClass(
       "font-bold",
+    );
+  });
+
+  // [代表値] 本文メッセージはsm以上でコンパクトなフォントサイズになる
+  it("uses a compact font size for the message at sm and wider", () => {
+    render(
+      <DeleteConfirmDialog
+        title="TODOを削除"
+        message="削除しますか？"
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("削除しますか？")).toHaveClass(
+      "text-sm",
+      "sm:text-xs",
     );
   });
 

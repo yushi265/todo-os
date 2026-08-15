@@ -113,19 +113,52 @@ describe("TodoFilterBar", () => {
 
     const searchInput = screen.getByRole("searchbox", { name: "TODOを検索" });
     expect(searchInput.parentElement?.querySelector("svg")).toBeInTheDocument();
-    expect(searchInput).toHaveClass("w-full", "pl-9");
+    expect(searchInput).toHaveClass(
+      "w-full",
+      "pl-9",
+      "text-sm",
+      "sm:text-xs",
+      "sm:py-1.5",
+    );
+    expect(filterBar).toHaveClass("gap-2", "sm:gap-1.5");
 
     const addFilterButton = screen.getByRole("button", {
       name: "フィルターを追加",
     });
-    expect(addFilterButton).toHaveClass("rounded-full", "border-dashed");
+    expect(addFilterButton).toHaveClass(
+      "rounded-full",
+      "border-dashed",
+      "sm:px-2.5",
+      "sm:py-1.5",
+      "sm:text-xs",
+    );
 
     expect(screen.getByLabelText("並び順")).toHaveClass("rounded-full");
-    expect(screen.getByText("並び順")).toHaveClass("text-text-quaternary");
+    expect(screen.getByLabelText("並び順")).toHaveClass(
+      "px-3",
+      "py-2",
+      "text-sm",
+      "sm:px-2.5",
+      "sm:py-1.5",
+      "sm:text-xs",
+    );
+    expect(screen.getByText("並び順")).toHaveClass(
+      "text-text-quaternary",
+      "sm:text-xs",
+    );
 
     await user.selectOptions(screen.getByLabelText("並び順"), "dueDate");
     expect(screen.getByRole("button", { name: "降順に切り替え" })).toHaveClass(
       "rounded-full",
+      "sm:px-2.5",
+      "sm:py-1.5",
+      "sm:text-base",
+    );
+
+    await user.click(addFilterButton);
+    expect(screen.getByRole("menuitem", { name: "ステータス" })).toHaveClass(
+      "text-sm",
+      "sm:text-xs",
     );
   });
 
@@ -134,7 +167,13 @@ describe("TodoFilterBar", () => {
       <FilterHarness initialFilters={{ ...emptyFilters, tagId: 1 }} />,
     );
 
-    expect(screen.getByText("タグ: #仕事")).toBeInTheDocument();
+    const chipValue = screen.getByText("タグ: #仕事");
+    expect(chipValue).toBeInTheDocument();
+    expect(chipValue).toHaveClass("sm:px-2.5");
+    expect(
+      screen.getByRole("button", { name: "フィルターを削除" }),
+    ).toHaveClass("min-w-11");
+    expect(chipValue.parentElement).toHaveClass("text-sm", "sm:text-xs");
   });
 
   it("入力した検索語を q クエリとして送信し、一覧を再取得する", async () => {

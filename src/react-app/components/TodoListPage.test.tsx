@@ -32,11 +32,15 @@ let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);
+  localStorage.clear();
+  document.documentElement.removeAttribute("data-theme");
 });
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  localStorage.clear();
+  document.documentElement.removeAttribute("data-theme");
 });
 
 describe("TodoListPage", () => {
@@ -57,7 +61,13 @@ describe("TodoListPage", () => {
       "font-bold",
       "sm:hidden",
     );
-    expect(headerButton).toHaveClass("hidden", "sm:inline-block", "font-bold");
+    expect(headerButton).toHaveClass(
+      "hidden",
+      "sm:inline-block",
+      "font-bold",
+      "text-sm",
+      "sm:text-xs",
+    );
   });
 
   // [代表値] AC-1: ヘッダーに色付きロゴアイコンを表示する
@@ -144,6 +154,8 @@ describe("TodoListPage", () => {
       "hidden",
       "sm:inline-block",
       "font-bold",
+      "text-sm",
+      "sm:text-xs",
     );
     expect(emptyStateButton.parentElement).toHaveClass("px-5");
   });
@@ -159,7 +171,10 @@ describe("TodoListPage", () => {
     expect(
       await screen.findByText("TODO の取得に失敗しました"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "再試行" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "再試行" })).toHaveClass(
+      "text-sm",
+      "sm:text-xs",
+    );
   });
 
   // [代表値] 取得成功時に一覧が表示される（正常系の配線確認）
@@ -277,13 +292,36 @@ describe("TodoListPage", () => {
     const tagManagementButton = await screen.findByRole("button", {
       name: "タグ管理",
     });
-    expect(tagManagementButton).toHaveClass("text-sm");
+    expect(tagManagementButton).toHaveClass(
+      "px-4",
+      "py-2",
+      "text-sm",
+      "sm:px-3",
+      "sm:py-1.5",
+      "sm:text-xs",
+    );
 
     await user.click(tagManagementButton);
 
     expect(
       screen.getByRole("dialog", { name: "タグ管理" }),
     ).toBeInTheDocument();
+  });
+
+  it("opens theme settings and applies the selected theme", async () => {
+    fetchMock.mockResolvedValue(jsonResponse([]));
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<TodoListPage />);
+    await user.click(await screen.findByRole("button", { name: "設定" }));
+
+    expect(
+      screen.getByRole("dialog", { name: "テーマ設定" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: "海" }));
+
+    expect(document.documentElement).toHaveAttribute("data-theme", "ocean");
+    expect(localStorage.getItem("todo-os-theme")).toBe("ocean");
   });
 
   // [代表値] TODO のステータスバッジをクリックすると PATCH が次のステータスで呼ばれる（AC-2）
@@ -350,11 +388,20 @@ describe("TodoListPage", () => {
     expect(
       await screen.findByText("「完了対象」を完了にしました"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveClass(
+    const toast = screen.getByRole("status");
+    expect(toast).toHaveClass(
       "bottom-24",
       "sm:bottom-4",
+      "px-4",
+      "py-3",
+      "sm:px-3",
+      "sm:py-2",
       "animate-[toast-in_0.18s_ease-out]",
       "shadow-[0_12px_36px_rgba(0,0,0,0.32)]",
+    );
+    expect(screen.getByText("「完了対象」を完了にしました")).toHaveClass(
+      "text-sm",
+      "sm:text-xs",
     );
   });
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { TodoResponse } from "../../shared/types";
 import { useShowCompleted } from "../hooks/useShowCompleted";
+import { useTheme } from "../hooks/useTheme";
 import {
   ApiError,
   useDeleteTodo,
@@ -15,9 +16,12 @@ import { buildFullReorderedIds } from "../lib/reorder";
 import CompletedToggle from "./CompletedToggle";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import TagManagementModal from "./TagManagementModal";
+import ThemeSettingsModal from "./ThemeSettingsModal";
+import QuickTodoInput from "./QuickTodoInput";
 import TodoFilterBar from "./TodoFilterBar";
 import TodoFormModal from "./TodoFormModal";
 import TodoList from "./TodoList";
+import Button from "./ui/button";
 
 type ModalState =
   { type: "create" } | { type: "edit"; todo: TodoResponse } | null;
@@ -69,9 +73,11 @@ function TodoListPage() {
   );
   const { data: tags = [] } = useTags();
   const [showCompleted, setShowCompleted] = useShowCompleted();
+  const { theme, setTheme } = useTheme();
   const [modalState, setModalState] = useState<ModalState>(null);
   const [deleteTarget, setDeleteTarget] = useState<TodoResponse | null>(null);
   const [isTagManagementOpen, setIsTagManagementOpen] = useState(false);
+  const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const deleteMutation = useDeleteTodo();
   const advanceStatusMutation = useUpdateTodo();
@@ -181,26 +187,34 @@ function TodoListPage() {
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsThemeSettingsOpen(true)}
+              className="font-normal sm:px-3 sm:py-1.5 sm:text-xs"
+            >
+              設定
+            </Button>
             <CompletedToggle
               checked={showCompleted}
               onChange={setShowCompleted}
             />
-            <button
-              type="button"
+            <Button
+              variant="outline"
               onClick={() => setIsTagManagementOpen(true)}
-              className="min-h-11 rounded-xl border border-border bg-card px-4 py-2 text-sm text-text-secondary hover:bg-surface"
+              className="font-normal sm:px-3 sm:py-1.5 sm:text-xs"
             >
               タグ管理
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
               onClick={() => setModalState({ type: "create" })}
-              className="hidden min-h-11 rounded-xl bg-primary px-4 py-2 font-bold text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover sm:inline-block"
+              className="hidden font-bold sm:text-xs sm:inline-block"
             >
               + 追加
-            </button>
+            </Button>
           </div>
         </header>
+
+        <QuickTodoInput />
 
         <TodoFilterBar
           search={search}
@@ -225,13 +239,13 @@ function TodoListPage() {
         {isError && (
           <div className="py-10 text-center">
             <p className="mb-4 text-danger">TODO の取得に失敗しました</p>
-            <button
-              type="button"
+            <Button
+              variant="outline"
               onClick={() => refetch()}
-              className="min-h-11 rounded-xl border border-border bg-card px-4 py-2 text-text-secondary hover:bg-surface"
+              className="font-normal sm:text-xs"
             >
               再試行
-            </button>
+            </Button>
           </div>
         )}
 
@@ -246,13 +260,13 @@ function TodoListPage() {
                   : "TODO はまだありません"}
               </p>
               {!hasListConditions && (
-                <button
-                  type="button"
+                <Button
+                  size="lg"
                   onClick={() => setModalState({ type: "create" })}
-                  className="hidden min-h-11 rounded-xl bg-primary px-6 py-3 font-bold text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover sm:inline-block"
+                  className="hidden font-bold sm:text-xs sm:inline-block"
                 >
                   + 最初の TODO を追加
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -273,14 +287,14 @@ function TodoListPage() {
           )}
       </div>
 
-      <button
-        type="button"
+      <Button
+        size="icon"
         aria-label="TODOを追加"
         onClick={() => setModalState({ type: "create" })}
-        className="fixed bottom-6 right-6 z-10 flex h-14 w-14 min-h-11 min-w-11 items-center justify-center rounded-full bg-primary font-bold text-2xl text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover sm:hidden"
+        className="fixed bottom-6 right-6 z-10 flex h-14 w-14 items-center justify-center rounded-full p-0 text-2xl font-bold sm:hidden"
       >
         <span aria-hidden="true">+</span>
-      </button>
+      </Button>
 
       {modalState && (
         <TodoFormModal
@@ -305,13 +319,21 @@ function TodoListPage() {
         <TagManagementModal onClose={() => setIsTagManagementOpen(false)} />
       )}
 
+      {isThemeSettingsOpen && (
+        <ThemeSettingsModal
+          theme={theme}
+          onThemeChange={setTheme}
+          onClose={() => setIsThemeSettingsOpen(false)}
+        />
+      )}
+
       {toast && (
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-x-0 bottom-24 sm:bottom-4 mx-auto flex w-fit items-center gap-3 rounded-xl bg-text-primary px-4 py-3 text-white shadow-[0_12px_36px_rgba(0,0,0,0.32)] animate-[toast-in_0.18s_ease-out]"
+          className="fixed inset-x-0 bottom-24 sm:bottom-4 mx-auto flex w-fit items-center gap-3 rounded-xl bg-text-primary px-4 py-3 sm:px-3 sm:py-2 text-white shadow-[0_12px_36px_rgba(0,0,0,0.32)] animate-[toast-in_0.18s_ease-out]"
         >
-          <span>{toast}</span>
+          <span className="text-sm sm:text-xs">{toast}</span>
           <button
             type="button"
             aria-label="閉じる"

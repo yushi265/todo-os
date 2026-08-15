@@ -6,6 +6,7 @@ import type { TagResponse, TodoResponse } from "../../shared/types";
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
 
 function makeTag(overrides: Partial<TagResponse> = {}): TagResponse {
@@ -220,6 +221,77 @@ describe("TodoListItem", () => {
     expect(screen.getByText("2026-08-20")).toBeInTheDocument();
   });
 
+  // [代表値] 本日期限は絵文字マーカーで表示される
+  it("displays a today due-date indicator", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-15T03:00:00.000Z"));
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={makeTodo({ dueDate: "2026-08-15" })}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
+      </ul>,
+    );
+
+    expect(screen.getByTestId("due-status-today")).toHaveTextContent(
+      "📅2026-08-15",
+    );
+    expect(screen.getByRole("img", { name: "本日期限" })).toHaveTextContent(
+      "📅",
+    );
+  });
+
+  // [代表値] 近日期限は本日を除く3日以内のTODOに絵文字で表示される
+  it("displays a soon due-date indicator", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-15T03:00:00.000Z"));
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={makeTodo({ dueDate: "2026-08-18" })}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
+      </ul>,
+    );
+
+    expect(screen.getByTestId("due-status-soon")).toHaveTextContent(
+      "⏰2026-08-18",
+    );
+  });
+
+  // [デシジョンテーブル] 完了済みTODOは期限日が過去でも緊急度マーカーを表示しない
+  it.each(["DONE", "CANCELED"] as const)(
+    "does not display an urgency indicator for %s todos",
+    (status) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-08-15T03:00:00.000Z"));
+
+      render(
+        <ul>
+          <TodoListItem
+            todo={makeTodo({ dueDate: "2026-08-14", status })}
+            onClick={vi.fn()}
+            onDeleteClick={vi.fn()}
+            onAdvanceStatus={vi.fn()}
+          />
+        </ul>,
+      );
+
+      expect(screen.getByText("2026-08-14")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("due-status-overdue"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("期限切れ")).not.toBeInTheDocument();
+    },
+  );
+
   // [境界値] 優先度未設定は "-" 表示
   it("displays a dash when priority is not set", () => {
     const todo = makeTodo({ priority: null });
@@ -396,6 +468,56 @@ describe("TodoListItem", () => {
     const row = screen.getByTestId("todo-item-8");
     expect(row).not.toHaveClass("flex-col");
     expect(row).toHaveClass("items-center");
+  });
+
+  // [代表値] TODO行と2段目メタ情報はsm以上でコンパクトになる
+  it("applies compact responsive classes to the row and metadata", () => {
+    const todo = makeTodo({
+      id: 10,
+      title: "密度調整確認",
+      priority: "HIGH",
+    });
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
+      </ul>,
+    );
+
+    const row = screen.getByTestId("todo-item-10");
+    const metadata = screen.getByText("優先度: 高").parentElement;
+
+    expect(row).toHaveClass("gap-2", "sm:gap-1.5");
+    expect(row).not.toHaveClass("sm:gap-4");
+    expect(row).toHaveClass("p-4", "sm:p-3");
+    expect(metadata).toHaveClass("text-sm", "sm:text-xs");
+  });
+
+  it("applies subtle row and status transition classes", () => {
+    render(
+      <ul>
+        <TodoListItem
+          todo={makeTodo({ id: 11 })}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
+      </ul>,
+    );
+
+    expect(screen.getByTestId("todo-item-11")).toHaveClass(
+      "animate-[todo-item-in_0.24s_ease-out]",
+    );
+    expect(
+      screen.getByRole("button", {
+        name: "「サンプル」を「進行中」に変更",
+      }),
+    ).toHaveClass("transition-transform", "active:scale-[0.98]");
   });
 
   // [デシジョンテーブル] ステータスバッジの aria-label は現在のステータスに応じた次ステータス名を示す

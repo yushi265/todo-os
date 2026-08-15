@@ -51,21 +51,25 @@ function TagMultiSelect({ selectedTagIds, onChange }: TagMultiSelectProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-text-secondary">タグ</span>
+      <span className="text-sm font-medium text-text-secondary sm:text-xs">
+        タグ
+      </span>
 
       {isLoading && (
-        <p role="status" className="text-sm text-text-tertiary">
+        <p role="status" className="text-sm text-text-tertiary sm:text-xs">
           タグを読み込み中...
         </p>
       )}
 
       {isError && (
         <div className="flex items-center gap-2">
-          <p className="text-sm text-danger">タグの取得に失敗しました</p>
+          <p className="text-sm text-danger sm:text-xs">
+            タグの取得に失敗しました
+          </p>
           <button
             type="button"
             onClick={() => refetch()}
-            className="min-h-11 rounded-xl border border-border bg-card px-3 py-1 text-sm text-text-secondary hover:bg-surface"
+            className="min-h-11 rounded-xl border border-border bg-card px-3 py-1 text-sm text-text-secondary hover:bg-surface sm:px-2.5 sm:py-1.5 sm:text-xs"
           >
             再試行
           </button>
@@ -75,7 +79,9 @@ function TagMultiSelect({ selectedTagIds, onChange }: TagMultiSelectProps) {
       {!isLoading && !isError && tags && (
         <div className="flex flex-wrap gap-2">
           {tags.length === 0 && (
-            <p className="text-sm text-text-tertiary">タグはまだありません</p>
+            <p className="text-sm text-text-tertiary sm:text-xs">
+              タグはまだありません
+            </p>
           )}
           {tags.map((tag) => {
             const selected = selectedTagIds.includes(tag.id);
@@ -87,8 +93,8 @@ function TagMultiSelect({ selectedTagIds, onChange }: TagMultiSelectProps) {
                 onClick={() => toggleTag(tag.id)}
                 className={
                   selected
-                    ? "min-h-11 rounded-full border border-primary bg-primary px-3 py-1 text-sm font-medium text-white"
-                    : "min-h-11 rounded-full border border-transparent bg-tag-bg px-3 py-1 text-sm text-tag-fg hover:bg-border-subtle"
+                    ? "min-h-11 rounded-full border border-primary bg-primary px-3 py-1 text-sm font-medium text-white sm:px-2.5 sm:text-xs"
+                    : "min-h-11 rounded-full border border-transparent bg-tag-bg px-3 py-1 text-sm text-tag-fg hover:bg-border-subtle sm:px-2.5 sm:text-xs"
                 }
               >
                 #{tag.name}
@@ -112,19 +118,19 @@ function TagMultiSelect({ selectedTagIds, onChange }: TagMultiSelectProps) {
             maxLength={50}
             value={newTagName}
             onChange={(e) => setNewTagName(e.target.value)}
-            className="min-h-11 flex-1 rounded-xl border border-border px-3 py-2 text-sm text-text-primary"
+            className="min-h-11 flex-1 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:px-2.5 sm:py-1.5 sm:text-xs"
           />
           <button
             type="button"
             onClick={handleCreate}
             disabled={createMutation.isPending}
-            className="min-h-11 rounded-xl border border-border bg-card px-3 py-1 text-sm text-text-secondary hover:bg-surface disabled:opacity-50"
+            className="min-h-11 rounded-xl border border-border bg-card px-3 py-1 text-sm text-text-secondary hover:bg-surface disabled:opacity-50 sm:px-2.5 sm:py-1.5 sm:text-xs"
           >
             追加
           </button>
         </div>
         {error && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-sm text-danger sm:text-xs">
             {error}
           </p>
         )}

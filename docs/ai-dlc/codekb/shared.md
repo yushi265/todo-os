@@ -36,6 +36,11 @@
 - `TagBadge`（参照: `src/react-app/components/TagBadge.tsx`）: `{tag, muted?: boolean}`を受け取るタグ表示専用バッジ。`#`+タグ名で表示し、`muted`指定時は`text-tag-fg-muted`（薄色）で表示する。完了・キャンセル済み行（`CompletedTodoListItem`）は`muted`を付与、未完了行（`TodoListItem`）は付与しない、という呼び出し元による出し分けパターン（design-conformance-polishユニットで導入）。
 - タップ領域とビジュアルサイズの分離パターン（参照: `src/react-app/components/CompletedToggle.tsx`）: アクセシビリティ上のタッチターゲット最小44px（`h-11 w-11`）を外側の`<span>`で確保しつつ、内側の`<span>`で視覚的なスイッチトラックサイズ（`h-[22px] w-[38px]`）をデザイン値に縮小する二重構造。`<label htmlFor>`と`<input id>`の関連付けにより、クリック領域はラベル全体（＝外側の44px)に及ぶ（design-conformance-polishユニットで導入）。
 - 長押しタッチドラッグ（参照: `src/react-app/components/TodoList.tsx` / `TodoListItem.tsx`）: `LONG_PRESS_MS=500`・`CANCEL_THRESHOLD_PX=10`定数、`touchStateRef`（タイマーIDと開始座標を保持）、`handleTouchStart`/`handleTouchMove`/`handleTouchEnd`の3ハンドラで構成。PC版マウスD&D（`handleDrop`）と本ハンドラ（`handleTouchEnd`）の確定処理は`commitReorder(sourceId, targetId)`という共通関数に集約し、`buildFullReorderedIds`・`onReorder`呼び出しを重複させない設計（mobile-responsive-polish ユニットで導入）。
+- `Button`（参照: `src/react-app/components/ui/button.tsx`）: shadcn/ui方式の共有ボタンコンポーネント。`ButtonVariant`（`default`/`outline`/`secondary`/`ghost`/`destructive`）と`ButtonSize`（`default`/`sm`/`lg`/`icon`）の2軸を`VARIANT_CLASSES`/`SIZE_CLASSES`という2つの`Record`で管理し、`joinClasses`関数で結合する。`TagManagementModal`（閉じる・追加ボタン）・`DeleteConfirmDialog`（キャンセル・削除するボタン）が導入済み（ui-high-priority-polishユニットで導入）。**レスポンシブ対応（`sm:`プレフィックス等）はボタン自体のclassNameではなく`SIZE_CLASSES`側に集約する**（呼び出し元ごとの二重対応を避けるため。`icon`サイズはタッチターゲット44px維持のため対象外。responsive-density-polishユニットで確立したパターン）。
+
+## 命名・設計規約
+
+- **レスポンシブは「`sm`未満は現状維持・`sm`（640px）以上でコンパクト化」という逆方向モバイルファースト**（通常のモバイルファースト＝デフォルト小さくbreakpointで拡大、とは逆）。スマホは現行の余白・文字サイズのまま、PC/タブレット幅でのみ`sm:text-xs`・`sm:p-3`等の1段階縮小クラスを追加する（responsive-density-polishユニットで確立。ユーザー方針: 「スマホ版は大きくてもいい」）。
 
 ## 既知の罠
 
@@ -64,6 +69,7 @@
 - **Codexのモデル指定**: `~/.codex/config.toml`の`model`/`model_reasoning_effort`がデフォルト設定として存在する。ユーザーの口語的な指定（例:「モデル名 max」）はreasoning effortレベルの意図である可能性が高く、モデル名にそのまま連結すると`400 model not supported`エラーになる。迷ったらモデル関連オプションを一切指定せずデフォルト設定のまま起動する。
 - **`codex:status`/`codex:result`はSkillツール経由（`disable-model-invocation`）で呼び出し禁止**。メインループは自律的に完了検知・結果取得ができず、都度ユーザーに`/codex:status <job-id>`の実行を依頼する必要がある。
 - Codexが生成したコードにReact非推奨パターン（`useEffect`内での直接`setState`呼び出し等）が混入することがある。上記のreferee-check盲点と組み合わさると、ESLintエラーがGate3直前まで見逃されるリスクがあるため、Codex実装後は必ずリポジトリ全体への`npx eslint .`を独立実行する（出典: `docs/ai-dlc/retro/manual-reorder.md`）。
+- **`codex:codex-rescue`の`status: completed`通知は「委譲リクエスト送信の完了」を意味するだけで、実際のCodexバックグラウンドジョブの完了を意味しない**。ジョブ自体は非同期でバックグラウンド継続実行される。実際の完了検知は`git status --short`/`ls -la`でのファイル更新時刻確認で独立に行う必要がある（出典: `docs/ai-dlc/retro/responsive-density-polish.md`）。
 
 ## 中断・再開の運用（advisory）
 
@@ -71,4 +77,5 @@
 
 ## 最終更新
 
-- design-conformance-polish / 2026-08-15（本コミットで追加。commit SHA はコミット後に確認）
+- responsive-density-polish / 2026-08-16（本コミットで追加。commit SHA はコミット後に確認）
+- design-conformance-polish / 2026-08-15

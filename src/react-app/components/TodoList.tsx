@@ -227,7 +227,7 @@ function TodoList({
   }
 
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="flex flex-col gap-3 sm:gap-2">
       {visibleTodos.map((todo) =>
         isCompleted(todo) ? (
           <CompletedTodoListItem

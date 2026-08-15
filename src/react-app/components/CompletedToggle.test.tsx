@@ -38,4 +38,28 @@ describe("CompletedToggle", () => {
       "完了・キャンセル済みを表示",
     );
   });
+
+  it("uses compact label text at sm and preserves the switch dimensions", () => {
+    render(<CompletedToggle checked={false} onChange={vi.fn()} />);
+
+    const label = screen.getByRole("checkbox").closest("label");
+    expect(label).not.toBeNull();
+    if (!label) return;
+
+    expect(label).toHaveClass("text-sm", "sm:text-xs");
+
+    const tapTarget = label.firstElementChild;
+    expect(tapTarget).not.toBeNull();
+    if (!tapTarget) return;
+
+    const track = tapTarget.firstElementChild;
+    expect(track).toHaveClass("h-[22px]", "w-[38px]");
+    if (!track) return;
+
+    const knob = track.lastElementChild;
+    expect(knob).not.toBeNull();
+    if (!knob) return;
+
+    expect(knob).toHaveClass("h-[18px]", "w-[18px]");
+  });
 });

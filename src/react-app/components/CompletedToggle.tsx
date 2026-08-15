@@ -8,7 +8,7 @@ function CompletedToggle({ checked, onChange }: CompletedToggleProps) {
   return (
     <label
       htmlFor="show-completed-toggle"
-      className="flex min-h-11 items-center gap-2 text-sm text-text-secondary"
+      className="flex min-h-11 items-center gap-2 text-sm sm:text-xs text-text-secondary"
     >
       <span className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center">
         <span className="relative inline-flex h-[22px] w-[38px] items-center">
