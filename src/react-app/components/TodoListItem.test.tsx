@@ -35,6 +35,60 @@ function makeTodo(overrides: Partial<TodoResponse>): TodoResponse {
 }
 
 describe("TodoListItem", () => {
+  // [代表値] sortBy=manual 相当の dragEnabled=true ではドラッグハンドルが活性
+  it("renders an active draggable handle when drag is enabled", () => {
+    const todo = makeTodo({ id: 42, title: "並び替え対象" });
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+          dragEnabled={true}
+          onDragStart={vi.fn()}
+          onDragOver={vi.fn()}
+          onDrop={vi.fn()}
+          onDragEnd={vi.fn()}
+        />
+      </ul>,
+    );
+
+    const handle = screen.getByRole("button", {
+      name: "ドラッグして並び替え",
+    });
+    expect(handle).toHaveAttribute("draggable", "true");
+    expect(handle).not.toHaveClass("opacity-30");
+  });
+
+  // [代表値] dragEnabled=false ではドラッグハンドルが非活性
+  it("renders a non-draggable handle when dragging is disabled", () => {
+    const todo = makeTodo({ id: 43, title: "非活性対象" });
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+          dragEnabled={false}
+          onDragStart={vi.fn()}
+          onDragOver={vi.fn()}
+          onDrop={vi.fn()}
+          onDragEnd={vi.fn()}
+        />
+      </ul>,
+    );
+
+    const handle = screen.getByRole("button", {
+      name: "ドラッグして並び替え",
+    });
+    expect(handle).toHaveAttribute("draggable", "false");
+    expect(handle).toHaveClass("opacity-30", "cursor-default");
+  });
+
   // [代表値] 行クリックで onClick(todo) が正しい todo で呼ばれる
   it("calls onClick with the todo when the row is clicked", async () => {
     const todo = makeTodo({ id: 42, title: "編集対象" });

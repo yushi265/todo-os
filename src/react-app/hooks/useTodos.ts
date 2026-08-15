@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreateTodoInput, UpdateTodoInput } from "../../shared/schemas";
+import type {
+  CreateTodoInput,
+  ReorderTodosInput,
+  UpdateTodoInput,
+} from "../../shared/schemas";
 import type {
   ErrorResponse,
   TodoPriority,
@@ -117,15 +121,30 @@ async function deleteTodo(id: number): Promise<void> {
   }
 }
 
+async function reorderTodos(input: ReorderTodosInput): Promise<void> {
+  const res = await fetch("/api/todos/reorder", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    throw await toApiError(res);
+  }
+}
+
 /**
  * TODO 一覧取得（AC-3）。
  * 失敗時は自動リトライせず即座に isError にする（ui 側は手動の「再試行」ボタンで再取得する設計）。
  */
-export function useTodos(params: ListTodosParams = {}) {
+export function useTodos(
+  params: ListTodosParams = {},
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: [...TODOS_QUERY_KEY, params],
     queryFn: () => fetchTodos(params),
     retry: false,
+    enabled: options.enabled ?? true,
   });
 }
 
@@ -156,6 +175,17 @@ export function useDeleteTodo() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: deleteTodo,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: TODOS_QUERY_KEY });
+    },
+  });
+}
+
+/** TODO 並び替え（AC-4, AC-6）。成功時に全一覧キャッシュを invalidate する。 */
+export function useReorderTodos() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: reorderTodos,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: TODOS_QUERY_KEY });
     },

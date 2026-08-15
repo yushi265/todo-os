@@ -19,6 +19,10 @@ export const updateTodoSchema = z.object({
   tagIds: z.array(z.number().int().positive()).optional(),
 });
 
+export const reorderTodosSchema = z.object({
+  todoIds: z.array(z.number().int().positive()),
+});
+
 export const listTodosQuerySchema = z.object({
   status: z.enum(["TODO", "IN_PROGRESS", "DONE", "CANCELED"]).optional(),
   priority: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
@@ -42,6 +46,7 @@ export const updateTagSchema = z.object({
 
 export type CreateTodoInput = z.infer<typeof createTodoSchema>;
 export type UpdateTodoInput = z.infer<typeof updateTodoSchema>;
+export type ReorderTodosInput = z.infer<typeof reorderTodosSchema>;
 export type ListTodosQuery = z.infer<typeof listTodosQuerySchema>;
 export type CreateTagInput = z.infer<typeof createTagSchema>;
 export type UpdateTagInput = z.infer<typeof updateTagSchema>;

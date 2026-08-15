@@ -3,6 +3,7 @@
 ## 公開インターフェース
 
 - `GET /api/todos`・`POST /api/todos`・`GET/PATCH/DELETE /api/todos/:id`（参照: `src/worker/routes/todos.ts`）。`app.route("/api/todos", todosRoute)` で `src/worker/index.ts` にマウント。`POST`/`PATCH` は `tagIds?: number[]` を受け付け、レスポンスの `TodoResponse` は常に `tags: TagResponse[]` を含む。`GET /api/todos` はクエリパラメータ `status`/`priority`/`tagId`/`due`(`TODAY`/`OVERDUE`/`NONE`)/`q`/`sortBy`(`manual`/`dueDate`/`priority`/`createdAt`/`updatedAt`)/`sortOrder`(`asc`/`desc`) に対応（`listTodosQuerySchema`、`src/shared/schemas.ts`。filter-sort-search ユニットで追加）。
+- `PATCH /api/todos/reorder`（参照: `src/worker/routes/todos.ts`）: `{todoIds: number[]}`を受け取り、順序どおり`sortOrder`を0起点で一括更新（`db.batch()`）。成功時`204`。重複ID・全TODO集合との不一致（過不足）は`400`。**`todosRoute.patch("/reorder", ...)`は`todosRoute.patch("/:id", ...)`より前に登録する必要がある**（Honoはルート登録順で評価するため、後に登録すると`/reorder`が`:id="reorder"`として`/:id`ハンドラに誤ってマッチする。manual-reorder ユニットで追加）。
 - `GET /api/tags`・`POST /api/tags`・`PATCH/DELETE /api/tags/:id`（参照: `src/worker/routes/tags.ts`）。`app.route("/api/tags", tagsRoute)` で `src/worker/index.ts` にマウント。タグ名重複は `409`、存在しない `tagIds` の指定は `400`。
 - レスポンス型 `TodoResponse`・`TagResponse`・`ErrorResponse`、入力スキーマ `createTodoSchema`・`updateTodoSchema`・`createTagSchema`・`updateTagSchema`（参照: `src/shared/types.ts` / `src/shared/schemas.ts`）。service・ui 両レイヤーが import する共有契約（`docs/architecture.md` 参照）。
 
@@ -14,6 +15,8 @@
 
 ## 再利用可能な部品
 
+- `buildFullReorderedIds(allTodos, visibleIdsInNewOrder)`（参照: `src/react-app/lib/reorder.ts`）: フィルタ非表示中のTODOの相対順序を維持したまま、表示中TODOの新しい並び順を全体のID配列へマージする。「全体リスト内でフィルタ対象の出現位置は固定し、その位置に新順序のIDを順番に埋める」アルゴリズム（REQUIREMENTS.md 6.3節のA,B,C,D例で検証済み）。
+- `useReorderTodos()`（参照: `src/react-app/hooks/useTodos.ts`）: `PATCH /api/todos/reorder`を呼ぶmutation。`useDeleteTodo`等と同型（成功時`TODOS_QUERY_KEY`をinvalidate）。
 - `buildOrderBy(sortBy, sortOrder)`（参照: `src/worker/routes/todos.ts`）: ソートキー→Drizzleの`orderBy`配列への変換。`priority`は`CASE...ELSE 0 END`のランク式（`HIGH`=3,`MEDIUM`=2,`LOW`=1,未設定=0）、`dueDate`はNULL常に末尾（`asc(sql\`... IS NULL\`)`を先頭に固定しdirは実値側にのみ適用）。`export`済みで単体テスト可能（`src/worker/routes/todos.test.ts`、`SQLiteAsyncDialect().sqlToQuery()`でSQL文字列を検証するパターン）。
 - `todayInTokyo()`（`src/worker/routes/todos.ts`側、service用）: `src/react-app/lib/isOverdue.ts`と同じAsia/Tokyo基準の日付取得ロジックだが、Workers runtime向けに独立実装（service/uiは別バンドルのため意図的に重複）。
 - `TodoFilterBar`（参照: `src/react-app/components/TodoFilterBar.tsx`）: 検索ボックス+フィルターチップ（属性→値の2段階メニュー）+ソートセレクト+方向トグルの複合コンポーネント。Unit3で確立した`@theme`トークンを再利用し新規トークンを追加しない設計。
@@ -44,11 +47,15 @@
 - **Claude Design MCP（`DesignSync`）はメインループのセッションでのみ使用可能**。Agent ツールで起動したサブエージェント（Explore・general-purpose 等）からは `ToolSearch` で発見できない（11 通りのクエリで検証済み）。デザインファイルの分析・詳細抽出はメインループ自身が直接 `DesignSync.get_file` を呼んで行う必要がある（出典: `docs/ai-dlc/retro/ui-visual-refresh.md`）。
 - `DesignSync.get_file` の結果は JSON 化された1行の巨大文字列で返り、ツール結果が大きいと `tool-results/*.txt` に保存されて `Read` が行数ベースの offset/limit で分割できない（1 行しかないため）。`python3 -c "import json; ...content..."` で JSON をデコードし実際の改行を復元したファイルをスクラッチパッドに書き出してから `Read`/`grep` する（出典: 同上）。
 
+- **`referee-check`の`post`（`npx lefthook run pre-commit`）ステップは、変更が`git add`されていない状態では対象ファイル0件で実質skipされ、lint等が検査されないまま`GREEN`と判定される**。実装後の権威検証では、`git add`（対象ファイル）してから`referee-check --layer all`を実行するか、`npx eslint .`のようなリポジトリ全体を対象にしたコマンドを別途直接実行して確認すること。この盲点により実際に`react-hooks/set-state-in-effect`のESLintエラーを1件見逃した事例あり（出典: `docs/ai-dlc/retro/manual-reorder.md`）。
+- **`.claude/aidlc/context-guard.json`の`contextWindow`はaidlc-init時点の既定値（200000）のままだと、拡張コンテキストウィンドウを使うセッションでサブエージェント起動を誤ブロックする**。実際のモデルの窓に合わせて更新すること。この設定ファイル自体の編集は自動モード分類器にブロックされる場合があり、その際はEditツールではなくBash（`sed`等）での編集が通ることがある（出典: 同上）。
+
 ## Codexへの委譲（advisory・filter-sort-searchで初導入）
 
 - **Codexのサンドボックス環境は`pnpm test:service`（Cloudflare Workers runtime起動を伴う）を実行できない**（`127.0.0.1` listenでEPERM。`@cloudflare/vitest-pool-workers`がMiniflare/workerdのローカルサーバーを起動できないため）。`pnpm test:ui`（jsdom・Node.jsプロセス内実行）は実行できる。Codexへservice層のTDD実装を委譲する場合、Codex自身のRED/GREEN確認は期待できず、**メインループが必ず`referee-check`で権威再検証する**前提で進める（出典: `docs/ai-dlc/retro/filter-sort-search.md`）。
 - **Codexのモデル指定**: `~/.codex/config.toml`の`model`/`model_reasoning_effort`がデフォルト設定として存在する。ユーザーの口語的な指定（例:「モデル名 max」）はreasoning effortレベルの意図である可能性が高く、モデル名にそのまま連結すると`400 model not supported`エラーになる。迷ったらモデル関連オプションを一切指定せずデフォルト設定のまま起動する。
 - **`codex:status`/`codex:result`はSkillツール経由（`disable-model-invocation`）で呼び出し禁止**。メインループは自律的に完了検知・結果取得ができず、都度ユーザーに`/codex:status <job-id>`の実行を依頼する必要がある。
+- Codexが生成したコードにReact非推奨パターン（`useEffect`内での直接`setState`呼び出し等）が混入することがある。上記のreferee-check盲点と組み合わさると、ESLintエラーがGate3直前まで見逃されるリスクがあるため、Codex実装後は必ずリポジトリ全体への`npx eslint .`を独立実行する（出典: `docs/ai-dlc/retro/manual-reorder.md`）。
 
 ## 中断・再開の運用（advisory）
 
@@ -56,4 +63,4 @@
 
 ## 最終更新
 
-- filter-sort-search / 2026-08-15（本コミットで追加。commit SHA はコミット後に確認）
+- manual-reorder / 2026-08-15（本コミットで追加。commit SHA はコミット後に確認）

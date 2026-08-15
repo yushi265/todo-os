@@ -689,6 +689,119 @@ describe("GET /api/todos/:id", () => {
   });
 });
 
+describe("PATCH /api/todos/reorder", () => {
+  it("updates sortOrder according to the requested todoIds order", async () => {
+    const first = await createTodo({ title: "first" });
+    const second = await createTodo({ title: "second" });
+    const third = await createTodo({ title: "third" });
+
+    const res = await call("PATCH", "/api/todos/reorder", {
+      todoIds: [third.id, first.id, second.id],
+    });
+
+    expect(res.status).toBe(204);
+    expect(await res.text()).toBe("");
+
+    const db = drizzle(env.DB);
+    const updated = await db
+      .select({ id: todos.id, sortOrder: todos.sortOrder })
+      .from(todos)
+      .all();
+    expect(new Map(updated.map((todo) => [todo.id, todo.sortOrder]))).toEqual(
+      new Map([
+        [third.id, 0],
+        [first.id, 1],
+        [second.id, 2],
+      ]),
+    );
+  });
+
+  it("rejects duplicate todoIds", async () => {
+    const first = await createTodo({ title: "first" });
+    const second = await createTodo({ title: "second" });
+
+    const res = await call("PATCH", "/api/todos/reorder", {
+      todoIds: [first.id, first.id, second.id],
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorResponse;
+    expect(body.error).toBe("todoIds contains duplicate values");
+  });
+
+  it("rejects todoIds that omit an existing todo", async () => {
+    const first = await createTodo({ title: "first" });
+    await createTodo({ title: "second" });
+
+    const res = await call("PATCH", "/api/todos/reorder", {
+      todoIds: [first.id],
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorResponse;
+    expect(body.error).toBe(
+      "todoIds must match the full set of existing todo ids",
+    );
+  });
+
+  it("rejects todoIds that include a non-existent todo", async () => {
+    const first = await createTodo({ title: "first" });
+    const second = await createTodo({ title: "second" });
+
+    const res = await call("PATCH", "/api/todos/reorder", {
+      todoIds: [first.id, second.id, 999999],
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorResponse;
+    expect(body.error).toBe(
+      "todoIds must match the full set of existing todo ids",
+    );
+  });
+
+  it("returns 204 for an empty todo list and empty todoIds", async () => {
+    const res = await call("PATCH", "/api/todos/reorder", { todoIds: [] });
+
+    expect(res.status).toBe(204);
+    expect(await res.text()).toBe("");
+  });
+
+  it.each([0, -1, "1"])(
+    "rejects a todoId that is not a positive integer: %s",
+    async (invalidTodoId) => {
+      const res = await call("PATCH", "/api/todos/reorder", {
+        todoIds: [invalidTodoId],
+      });
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as ErrorResponse;
+      expect(body.error).toBe("Validation failed");
+      expect(body.details).toBeDefined();
+    },
+  );
+
+  it("makes the reordered sequence visible through manual sorting", async () => {
+    const first = await createTodo({ title: "first" });
+    const second = await createTodo({ title: "second" });
+    const third = await createTodo({ title: "third" });
+
+    const reorderRes = await call("PATCH", "/api/todos/reorder", {
+      todoIds: [third.id, first.id, second.id],
+    });
+    expect(reorderRes.status).toBe(204);
+
+    const listRes = await call("GET", "/api/todos?sortBy=manual");
+
+    expect(listRes.status).toBe(200);
+    const body = (await listRes.json()) as TodoResponse[];
+    expect(body.map((todo) => todo.id)).toEqual([
+      third.id,
+      first.id,
+      second.id,
+    ]);
+  });
+});
+
 describe("PATCH /api/todos/:id", () => {
   it("returns 404 for a non-existent id", async () => {
     const res = await call("PATCH", "/api/todos/999999", { title: "x" });

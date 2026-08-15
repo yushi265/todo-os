@@ -1,3 +1,5 @@
+import { useState } from "react";
+import type { DragEvent } from "react";
 import type { TodoResponse } from "../../shared/types";
 import CompletedTodoListItem from "./CompletedTodoListItem";
 import TodoListItem from "./TodoListItem";
@@ -14,6 +16,8 @@ interface TodoListProps {
   onDeleteClick: (todo: TodoResponse) => void;
   /** ステータスバッジクリックによる進行ショートカット（AC-2）。未完了行にのみ配線する。 */
   onAdvanceStatus: (todo: TodoResponse) => void;
+  dragEnabled?: boolean;
+  onReorder?: (visibleIdsInNewOrder: number[]) => void;
 }
 
 function isCompleted(todo: TodoResponse): boolean {
@@ -31,10 +35,69 @@ function TodoList({
   onItemClick,
   onDeleteClick,
   onAdvanceStatus,
+  onReorder = () => undefined,
+  dragEnabled = false,
 }: TodoListProps) {
+  const [dragId, setDragId] = useState<number | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
   const visibleTodos = showCompleted
     ? todos
     : todos.filter((todo) => !isCompleted(todo));
+
+  const draggableTodos = visibleTodos.filter((todo) => !isCompleted(todo));
+  const draggableTodoIds = new Set(draggableTodos.map((todo) => todo.id));
+
+  function handleDragStart(todoId: number) {
+    return (event: DragEvent<HTMLButtonElement>) => {
+      if (!dragEnabled) return;
+      setDragId(todoId);
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", String(todoId));
+      }
+    };
+  }
+
+  function handleDragOver(todoId: number) {
+    return (event: DragEvent<HTMLLIElement>) => {
+      if (!dragEnabled || dragId === null || !draggableTodoIds.has(todoId)) {
+        return;
+      }
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+      setDragOverId(todoId);
+    };
+  }
+
+  function handleDrop(todoId: number) {
+    return (event: DragEvent<HTMLLIElement>) => {
+      event.preventDefault();
+      if (!dragEnabled || dragId === null || dragId === todoId) {
+        setDragOverId(null);
+        return;
+      }
+
+      const ids = draggableTodos.map((todo) => todo.id);
+      const sourceIndex = ids.indexOf(dragId);
+      const targetIndex = ids.indexOf(todoId);
+      if (sourceIndex === -1 || targetIndex === -1) {
+        setDragId(null);
+        setDragOverId(null);
+        return;
+      }
+
+      const [movedId] = ids.splice(sourceIndex, 1);
+      ids.splice(targetIndex, 0, movedId);
+      onReorder(ids);
+      setDragId(null);
+      setDragOverId(null);
+    };
+  }
+
+  function handleDragEnd() {
+    setDragId(null);
+    setDragOverId(null);
+  }
 
   if (visibleTodos.length === 0) {
     return (
@@ -61,6 +124,12 @@ function TodoList({
             onClick={onItemClick}
             onDeleteClick={onDeleteClick}
             onAdvanceStatus={onAdvanceStatus}
+            dragEnabled={dragEnabled}
+            onDragStart={handleDragStart(todo.id)}
+            onDragOver={handleDragOver(todo.id)}
+            onDrop={handleDrop(todo.id)}
+            onDragEnd={handleDragEnd}
+            isDragOver={dragOverId === todo.id}
           />
         ),
       )}

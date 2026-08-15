@@ -1,3 +1,4 @@
+import type { DragEventHandler } from "react";
 import type { TodoResponse } from "../../shared/types";
 import { isOverdue } from "../lib/isOverdue";
 import {
@@ -14,6 +15,12 @@ interface TodoListItemProps {
   onDeleteClick: (todo: TodoResponse) => void;
   /** ステータスバッジクリックによる進行ショートカット（AC-2）。呼び出し元が PATCH 送信を担う。 */
   onAdvanceStatus: (todo: TodoResponse) => void;
+  dragEnabled?: boolean;
+  isDragOver?: boolean;
+  onDragStart?: DragEventHandler<HTMLButtonElement>;
+  onDragOver?: DragEventHandler<HTMLLIElement>;
+  onDrop?: DragEventHandler<HTMLLIElement>;
+  onDragEnd?: DragEventHandler<HTMLButtonElement>;
 }
 
 /**
@@ -25,15 +32,47 @@ function TodoListItem({
   onClick,
   onDeleteClick,
   onAdvanceStatus,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  isDragOver = false,
+  dragEnabled = false,
 }: TodoListItemProps) {
   const overdue = isOverdue(todo.dueDate, todo.status);
   const next = nextStatus(todo.status);
 
   return (
     <li
-      className="flex flex-col gap-2 rounded-2xl border border-border-subtle bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] sm:flex-row sm:items-center sm:gap-4"
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      className={`flex flex-col gap-2 rounded-2xl border p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] sm:flex-row sm:items-center sm:gap-4 ${isDragOver ? "border-chip-border bg-chip-bg" : "border-border-subtle bg-card"}`}
       data-testid={`todo-item-${todo.id}`}
     >
+      <button
+        type="button"
+        aria-label="ドラッグして並び替え"
+        title="ドラッグして並び替え"
+        draggable={dragEnabled}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+        className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center self-start rounded-xl text-text-tertiary sm:self-center ${dragEnabled ? "cursor-grab hover:bg-surface" : "cursor-default opacity-30"}`}
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="h-5 w-5"
+          fill="currentColor"
+        >
+          <circle cx="8" cy="6" r="1.5" />
+          <circle cx="16" cy="6" r="1.5" />
+          <circle cx="8" cy="12" r="1.5" />
+          <circle cx="16" cy="12" r="1.5" />
+          <circle cx="8" cy="18" r="1.5" />
+          <circle cx="16" cy="18" r="1.5" />
+        </svg>
+      </button>
+
       <button
         type="button"
         aria-label={`「${todo.title}」を「${STATUS_LABEL[next]}」に変更`}

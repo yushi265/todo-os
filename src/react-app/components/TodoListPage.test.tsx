@@ -1,4 +1,10 @@
-import { cleanup, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import TodoListPage from "./TodoListPage";
@@ -345,5 +351,118 @@ describe("TodoListPage", () => {
     expect(
       screen.getByRole("button", { name: "「対象タスク」を「進行中」に変更" }),
     ).toBeInTheDocument();
+  });
+
+  // [代表値] sortBy=manual のドラッグ&ドロップで、フィルター対象外の位置を維持した
+  // 全件 ID 配列を PATCH へ送信する（AC-4, AC-6）
+  it("reorders visible todos and sends the merged full ID order", async () => {
+    const allTodos = [
+      makeTodo({ id: 1, title: "A" }),
+      makeTodo({ id: 2, title: "B" }),
+      makeTodo({ id: 3, title: "C" }),
+      makeTodo({ id: 4, title: "D" }),
+    ];
+    const visibleTodos = [allTodos[0], allTodos[2]];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        return Promise.resolve(jsonResponse(undefined, 204));
+      }
+      if (url === "/api/tags") return Promise.resolve(jsonResponse([]));
+      if (url === "/api/todos") return Promise.resolve(jsonResponse(allTodos));
+      return Promise.resolve(jsonResponse(visibleTodos));
+    });
+
+    renderWithQueryClient(<TodoListPage />);
+
+    const sourceItem = await screen.findByTestId("todo-item-1");
+    const targetItem = screen.getByTestId("todo-item-3");
+    const sourceHandle = within(sourceItem).getByRole("button", {
+      name: "ドラッグして並び替え",
+    });
+    expect(sourceHandle).toHaveAttribute("draggable", "true");
+
+    fireEvent.dragStart(sourceHandle);
+    fireEvent.dragOver(targetItem);
+    fireEvent.drop(targetItem);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/todos/reorder",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ todoIds: [3, 2, 1, 4] }),
+        }),
+      );
+    });
+
+    expect(
+      screen
+        .getAllByTestId(/^todo-item-/)
+        .map((item) => item.getAttribute("data-testid")),
+    ).toEqual(["todo-item-3", "todo-item-1"]);
+  });
+
+  // [デシジョンテーブル] manual 以外の各ソートではハンドルを非活性にする（AC-5）
+  it.each(["dueDate", "priority", "createdAt", "updatedAt"] as const)(
+    "disables drag handles when sortBy=%s",
+    async (sortBy) => {
+      fetchMock.mockImplementation((url: string) =>
+        Promise.resolve(
+          url === "/api/tags"
+            ? jsonResponse([])
+            : jsonResponse([makeTodo({ title: "対象タスク" })]),
+        ),
+      );
+      const user = userEvent.setup();
+
+      renderWithQueryClient(<TodoListPage />);
+      await user.selectOptions(await screen.findByLabelText("並び順"), sortBy);
+
+      await waitFor(() => {
+        expect(
+          within(screen.getByTestId("todo-item-1")).getByRole("button", {
+            name: "ドラッグして並び替え",
+          }),
+        ).toHaveAttribute("draggable", "false");
+      });
+    },
+  );
+
+  // [代表値] 並び替え API が失敗した場合は楽観的な順序を元に戻し、エラー通知を表示する（AC-7）
+  it("rolls back the optimistic order and shows a toast when reorder fails", async () => {
+    const todos = [
+      makeTodo({ id: 1, title: "先頭" }),
+      makeTodo({ id: 2, title: "後続" }),
+    ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        return Promise.resolve(
+          jsonResponse({ error: "Internal server error" }, 500),
+        );
+      }
+      if (url === "/api/tags") return Promise.resolve(jsonResponse([]));
+      return Promise.resolve(jsonResponse(todos));
+    });
+
+    renderWithQueryClient(<TodoListPage />);
+
+    const sourceItem = await screen.findByTestId("todo-item-1");
+    const targetItem = screen.getByTestId("todo-item-2");
+    fireEvent.dragStart(
+      within(sourceItem).getByRole("button", {
+        name: "ドラッグして並び替え",
+      }),
+    );
+    fireEvent.dragOver(targetItem);
+    fireEvent.drop(targetItem);
+
+    expect(
+      await screen.findByText("時間をおいて再度お試しください"),
+    ).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByTestId(/^todo-item-/)
+        .map((item) => item.getAttribute("data-testid")),
+    ).toEqual(["todo-item-1", "todo-item-2"]);
   });
 });

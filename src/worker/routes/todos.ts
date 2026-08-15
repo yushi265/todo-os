@@ -19,6 +19,7 @@ import { tags, todos, todoTags } from "../../db/schema";
 import {
   createTodoSchema,
   listTodosQuerySchema,
+  reorderTodosSchema,
   updateTodoSchema,
   type ListTodosQuery,
 } from "../../shared/schemas";
@@ -228,6 +229,52 @@ todosRoute.get("/:id", async (c) => {
   }
   const [withTags] = await attachTags(db, [found]);
   return c.json(withTags satisfies TodoResponse);
+});
+
+todosRoute.patch("/reorder", async (c) => {
+  const parsed = reorderTodosSchema.safeParse(await c.req.json());
+  if (!parsed.success) {
+    return c.json(
+      {
+        error: "Validation failed",
+        details: parsed.error.issues,
+      } satisfies ErrorResponse,
+      400,
+    );
+  }
+
+  const { todoIds } = parsed.data;
+  const uniqueIds = new Set(todoIds);
+  if (uniqueIds.size !== todoIds.length) {
+    return c.json(
+      { error: "todoIds contains duplicate values" } satisfies ErrorResponse,
+      400,
+    );
+  }
+
+  const db = drizzle(c.env.DB);
+  const existing = await db.select({ id: todos.id }).from(todos).all();
+  const existingIds = new Set(existing.map((todo) => todo.id));
+  const isExactMatch =
+    uniqueIds.size === existingIds.size &&
+    [...uniqueIds].every((id) => existingIds.has(id));
+  if (!isExactMatch) {
+    return c.json(
+      {
+        error: "todoIds must match the full set of existing todo ids",
+      } satisfies ErrorResponse,
+      400,
+    );
+  }
+
+  if (todoIds.length === 0) return c.body(null, 204);
+
+  const updates = todoIds.map((id, index) =>
+    db.update(todos).set({ sortOrder: index }).where(eq(todos.id, id)),
+  );
+  await db.batch(updates as [(typeof updates)[number], ...typeof updates]);
+
+  return c.body(null, 204);
 });
 
 todosRoute.patch("/:id", async (c) => {

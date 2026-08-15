@@ -97,6 +97,23 @@ describe("CompletedTodoListItem", () => {
     },
   );
 
+  // [回帰] 完了済み TODO にはドラッグハンドルを追加しない
+  it("does not render a drag handle for completed todos", () => {
+    render(
+      <ul>
+        <CompletedTodoListItem
+          todo={makeTodo({ title: "完了済み" })}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+        />
+      </ul>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "ドラッグして並び替え" }),
+    ).not.toBeInTheDocument();
+  });
+
   // [代表値] 行クリックで onClick(todo) が正しい todo で呼ばれる
   it("calls onClick with the todo when the row is clicked", async () => {
     const todo = makeTodo({ id: 9, title: "編集対象" });

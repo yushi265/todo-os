@@ -1,4 +1,10 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import TodoList from "./TodoList";
@@ -159,5 +165,109 @@ describe("TodoList", () => {
     );
 
     expect(onAdvanceStatus).toHaveBeenCalledWith(todo);
+  });
+
+  // [境界値] ドラッグが無効な場合はドラッグシーケンスを発火しても並び替えない
+  it("does not reorder when dragging is disabled", () => {
+    const todos = [
+      makeTodo({ id: 1, title: "先頭" }),
+      makeTodo({ id: 2, title: "後続" }),
+    ];
+    const onReorder = vi.fn();
+
+    render(
+      <TodoList
+        todos={todos}
+        showCompleted={false}
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled={false}
+        onReorder={onReorder}
+      />,
+    );
+
+    const sourceItem = screen.getByTestId("todo-item-1");
+    const targetItem = screen.getByTestId("todo-item-2");
+    fireEvent.dragStart(
+      within(sourceItem).getByRole("button", {
+        name: "ドラッグして並び替え",
+      }),
+    );
+    fireEvent.dragOver(targetItem);
+    fireEvent.drop(targetItem);
+
+    expect(onReorder).not.toHaveBeenCalled();
+  });
+
+  // [境界値] ドラッグ元とドロップ先が同じ TODO の場合は並び替えない
+  it("does not reorder when dropping a todo onto itself", () => {
+    const todos = [
+      makeTodo({ id: 1, title: "先頭" }),
+      makeTodo({ id: 2, title: "後続" }),
+    ];
+    const onReorder = vi.fn();
+
+    render(
+      <TodoList
+        todos={todos}
+        showCompleted={false}
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled={true}
+        onReorder={onReorder}
+      />,
+    );
+
+    const sourceItem = screen.getByTestId("todo-item-1");
+    fireEvent.dragStart(
+      within(sourceItem).getByRole("button", {
+        name: "ドラッグして並び替え",
+      }),
+    );
+    fireEvent.dragOver(sourceItem);
+    fireEvent.drop(sourceItem);
+
+    expect(onReorder).not.toHaveBeenCalled();
+  });
+
+  // [状態遷移] ドロップせずにドラッグを終了した後も、次のドラッグは正常に開始できる
+  it("resets drag state when a drag ends without a drop", () => {
+    const todos = [
+      makeTodo({ id: 1, title: "先頭" }),
+      makeTodo({ id: 2, title: "後続" }),
+    ];
+    const onReorder = vi.fn();
+
+    render(
+      <TodoList
+        todos={todos}
+        showCompleted={false}
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled={true}
+        onReorder={onReorder}
+      />,
+    );
+
+    const sourceItem = screen.getByTestId("todo-item-1");
+    const targetItem = screen.getByTestId("todo-item-2");
+    const sourceHandle = within(sourceItem).getByRole("button", {
+      name: "ドラッグして並び替え",
+    });
+
+    fireEvent.dragStart(sourceHandle);
+    fireEvent.dragOver(targetItem);
+    fireEvent.dragEnd(sourceHandle);
+    fireEvent.drop(targetItem);
+    expect(onReorder).not.toHaveBeenCalled();
+
+    fireEvent.dragStart(sourceHandle);
+    fireEvent.dragOver(targetItem);
+    fireEvent.drop(targetItem);
+
+    expect(onReorder).toHaveBeenCalledWith([2, 1]);
   });
 });

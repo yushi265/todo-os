@@ -4,12 +4,14 @@ import { useShowCompleted } from "../hooks/useShowCompleted";
 import {
   ApiError,
   useDeleteTodo,
+  useReorderTodos,
   useTodos,
   useUpdateTodo,
 } from "../hooks/useTodos";
 import type { SortBy, TodoFilters } from "../hooks/useTodos";
 import { useTags } from "../hooks/useTags";
 import { nextStatus } from "../lib/statusStyles";
+import { buildFullReorderedIds } from "../lib/reorder";
 import CompletedToggle from "./CompletedToggle";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import TagManagementModal from "./TagManagementModal";
@@ -19,6 +21,30 @@ import TodoList from "./TodoList";
 
 type ModalState =
   { type: "create" } | { type: "edit"; todo: TodoResponse } | null;
+
+function orderTodosByIds(
+  todos: TodoResponse[],
+  orderedIds: number[],
+): TodoResponse[] {
+  const positions = new Map(orderedIds.map((id, index) => [id, index]));
+  return [...todos].sort(
+    (left, right) =>
+      (positions.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+      (positions.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+  );
+}
+
+function isDataInOptimisticOrder(
+  data: TodoResponse[],
+  optimisticOrderIds: number[],
+): boolean {
+  const dataIds = data.map((todo) => todo.id);
+  const expectedIds = optimisticOrderIds.filter((id) => dataIds.includes(id));
+  return (
+    expectedIds.length === dataIds.length &&
+    expectedIds.every((id, index) => id === dataIds[index])
+  );
+}
 
 /** TODO 一覧画面。データ取得・状態の出し分け（読み込み中/エラー/空/成功）を統括する。 */
 function TodoListPage() {
@@ -37,6 +63,10 @@ function TodoListPage() {
     sortBy,
     sortOrder,
   });
+  const { data: allTodosForReorder = [] } = useTodos(
+    {},
+    { enabled: sortBy === "manual" },
+  );
   const { data: tags = [] } = useTags();
   const [showCompleted, setShowCompleted] = useShowCompleted();
   const [modalState, setModalState] = useState<ModalState>(null);
@@ -45,6 +75,17 @@ function TodoListPage() {
   const [toast, setToast] = useState<string | null>(null);
   const deleteMutation = useDeleteTodo();
   const advanceStatusMutation = useUpdateTodo();
+  const reorderMutation = useReorderTodos();
+  const [optimisticOrderIds, setOptimisticOrderIds] = useState<number[] | null>(
+    null,
+  );
+
+  const displayedTodos =
+    data && optimisticOrderIds
+      ? isDataInOptimisticOrder(data, optimisticOrderIds)
+        ? data
+        : orderTodosByIds(data, optimisticOrderIds)
+      : data;
 
   function handleNotFound() {
     setToast("対象の TODO が見つかりませんでした");
@@ -88,6 +129,28 @@ function TodoListPage() {
             handleNotFound();
             return;
           }
+          setToast("時間をおいて再度お試しください");
+        },
+      },
+    );
+  }
+
+  function handleReorder(visibleIdsInNewOrder: number[]) {
+    if (sortBy !== "manual") return;
+
+    // 全件取得がまだ完了していない初期タイミングでは、フィルターなしの
+    // 一覧データを使える場合だけフォールバックする（通常は追加取得側が使われる）。
+    const allTodos = allTodosForReorder.length > 0 ? allTodosForReorder : data;
+    if (!allTodos || allTodos.length === 0) return;
+
+    const previousOrder = optimisticOrderIds ?? allTodos.map((todo) => todo.id);
+    const todoIds = buildFullReorderedIds(allTodos, visibleIdsInNewOrder);
+    setOptimisticOrderIds(todoIds);
+    reorderMutation.mutate(
+      { todoIds },
+      {
+        onError: () => {
+          setOptimisticOrderIds(previousOrder);
           setToast("時間をおいて再度お試しください");
         },
       },
@@ -157,34 +220,42 @@ function TodoListPage() {
           </div>
         )}
 
-        {!isLoading && !isError && data && data.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-border-dashed py-10 text-center">
-            <p className="mb-4 text-text-tertiary">
-              {hasListConditions
-                ? "条件に一致する TODO がありません"
-                : "TODO はまだありません"}
-            </p>
-            {!hasListConditions && (
-              <button
-                type="button"
-                onClick={() => setModalState({ type: "create" })}
-                className="min-h-11 rounded-xl bg-primary px-6 py-3 text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover"
-              >
-                + 最初の TODO を追加
-              </button>
-            )}
-          </div>
-        )}
+        {!isLoading &&
+          !isError &&
+          displayedTodos &&
+          displayedTodos.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-border-dashed py-10 text-center">
+              <p className="mb-4 text-text-tertiary">
+                {hasListConditions
+                  ? "条件に一致する TODO がありません"
+                  : "TODO はまだありません"}
+              </p>
+              {!hasListConditions && (
+                <button
+                  type="button"
+                  onClick={() => setModalState({ type: "create" })}
+                  className="min-h-11 rounded-xl bg-primary px-6 py-3 text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover"
+                >
+                  + 最初の TODO を追加
+                </button>
+              )}
+            </div>
+          )}
 
-        {!isLoading && !isError && data && data.length > 0 && (
-          <TodoList
-            todos={data}
-            showCompleted={showCompleted}
-            onItemClick={(todo) => setModalState({ type: "edit", todo })}
-            onDeleteClick={setDeleteTarget}
-            onAdvanceStatus={handleAdvanceStatus}
-          />
-        )}
+        {!isLoading &&
+          !isError &&
+          displayedTodos &&
+          displayedTodos.length > 0 && (
+            <TodoList
+              todos={displayedTodos}
+              showCompleted={showCompleted}
+              onItemClick={(todo) => setModalState({ type: "edit", todo })}
+              onDeleteClick={setDeleteTarget}
+              onAdvanceStatus={handleAdvanceStatus}
+              dragEnabled={sortBy === "manual"}
+              onReorder={handleReorder}
+            />
+          )}
       </div>
 
       {modalState && (
