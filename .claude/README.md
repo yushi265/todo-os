@@ -93,6 +93,14 @@ AI に実装を任せるほど「設計を読まずに書く」「過剰設計�
 | [`bolt-replay`](./skills/bolt-replay/SKILL.md) | ボルトの経緯を機械記録から時系列に再構成（read-only。Gate 3 の審査材料） |
 | [`aidlc-init`](./skills/aidlc-init/SKILL.md) | **このテンプレを導入した直後の初期設定**（レイヤー・言語・検証コマンド・高リスク要素・プロジェクト固有 sensor の要否を対話で設定し、config 群を埋める） |
 
+### プロジェクト固有スキル
+
+AI-DLC フローとは独立した、このプロジェクト固有の実務スキル。正本は `.agents/skills/`（ツール非依存の共通置き場）に置き、`.claude/skills/` 側からシンボリックリンクで参照する。
+
+| スキル | 手順 |
+|--------|------|
+| [`cloudflare-deploy`](./skills/cloudflare-deploy/SKILL.md) | Cloudflare Workersへのデプロイ（初回セットアップ・ビルド＆デプロイ・Cloudflare Access設定・独自ドメイン紐付け・更新デプロイ） |
+
 ---
 
 ## 3. 日々のワークフロー（実装の流れ）
