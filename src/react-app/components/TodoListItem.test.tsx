@@ -356,6 +356,28 @@ describe("TodoListItem", () => {
     expect(statusBadge.parentElement).toBe(priorityText.parentElement);
   });
 
+  // [代表値] ステータスバッジは縦の余白を抑えたコンパクトな見た目にする
+  it("keeps the status badge visually compact without a forced 44px height", () => {
+    const todo = makeTodo({ title: "サイズ確認", status: "TODO" });
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={todo}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
+      </ul>,
+    );
+
+    const statusBadge = screen.getByRole("button", {
+      name: "「サイズ確認」を「進行中」に変更",
+    });
+    expect(statusBadge).not.toHaveClass("min-h-11");
+    expect(statusBadge).toHaveClass("py-1");
+  });
+
   // [代表値] TODO行はモバイル幅でも縦積みにならず、常に横並びレイアウトを維持する（レイアウト崩れ防止）
   it("keeps the row laid out horizontally instead of stacking vertically", () => {
     const todo = makeTodo({ id: 8, title: "レイアウト確認" });

@@ -101,7 +101,7 @@ function TodoListItem({
               e.stopPropagation();
               onAdvanceStatus(todo);
             }}
-            className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_BADGE_CLASSES[todo.status]}`}
+            className={`inline-flex shrink-0 items-center justify-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_BADGE_CLASSES[todo.status]}`}
           >
             {STATUS_LABEL[todo.status]}
           </button>
