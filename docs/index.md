@@ -15,6 +15,8 @@
 |------------|------|
 | [architecture.md](./architecture.md) | プロジェクトのアーキテクチャ（レイヤー責務・依存方向）。汎用テンプレートを各プロジェクトが記述 |
 | [deploy.md](./deploy.md) | Cloudflareへのデプロイ手順（初回セットアップ・Cloudflare Access設定・更新デプロイ・トラブルシューティング） |
+| [cli.md](./cli.md) | Cloudflare Access認証済みAPIを使ったCLIからのTODO追加 |
+| [accessibility.md](./accessibility.md) | TODO一覧のWCAG 2.1 AA検証コマンドと対象 |
 | [ai-dlc-flow-guide.md](./ai-dlc-flow-guide.md) | AI-DLC 開発フローの解説（チームメンバー・新規参入者向け。人間の承認ゲートの見方） |
 | [ai-dlc/codex-adapter.md](./ai-dlc/codex-adapter.md) | CodexでAI-DLCを実行するためのホスト差分・委譲・検証手順 |
 | [ai-dlc/glossary.md](./ai-dlc/glossary.md) | AI-DLC 用語集（ビジネスインテント / BC / ユニット / ボルト / ステージ / ゲート / Tier / SSoT）の**正本** |
