@@ -16,6 +16,7 @@
 | コンポーネント | 変更種別 | props | 備考 |
 |---|---|---|---|
 | `TodoFilterBar`（新規） | 追加 | `{ search: string; onSearchChange: (v: string) => void; filters: TodoFilters; onFiltersChange: (f: TodoFilters) => void; sortBy: SortBy; sortOrder: "asc" \| "desc"; onSortChange: (sortBy: SortBy, sortOrder: "asc" \| "desc") => void; tags: TagResponse[] }` | 検索ボックス・フィルターチップ・フィルターメニュー（属性→値の2段階）・ソートセレクト・方向トグルを内包。メニュー開閉状態は内部stateで持つ（親に漏らさない） |
+| `TagSwitcher` | 追加 | `{ tags: TagResponse[]; selectedTagId: number \| null; onTagChange: (tagId: number \| null) => void }` | タグが1件以上あるとき一覧上部に表示するクイック切替。`filters.tagId`と同じ単一タグ条件を共有する |
 | `TodoListPage` | 変更 | 既存のまま | `search`/`filters`/`sortBy`/`sortOrder`のstateを追加保持し、`useTodos()`へクエリパラメータとして渡す。`TodoFilterBar`をヘッダー下に配置 |
 | `useTodos` (`hooks/useTodos.ts`) | 変更 | `useTodos(params?: ListTodosParams)` | 引数追加（既存の無引数呼び出しは`{}`扱いで後方互換）。クエリキーは`[...TODOS_QUERY_KEY, params]`（`TODOS_QUERY_KEY`自体は不変のため、他フックの`invalidateQueries({queryKey: TODOS_QUERY_KEY})`はprefix一致で全パラメータ組み合わせを無効化できる） |
 
@@ -58,6 +59,7 @@ export interface ListTodosParams {
   - 検索ボックスに入力するたび（`onChange`）に一覧が絞り込まれる（デバウンス無し。REQUIREMENTS.mdに要求が無くYAGNI）。
   - フィルター「+フィルター」ボタン→属性選択メニュー（ステータス/優先度/タグ/期限）→値選択メニューの2段階。選択済み属性はメニューの選択肢から除外される（最大4チップ）。
   - チップの×クリックで該当フィルターを解除。チップ本体クリックで値選択メニューを再度開く（値の変更）。
+  - `TagSwitcher`は一覧上部の常時表示されるクイック切替として、「すべて」または1タグを選ぶ。既存の`TodoFilterBar`のタグフィルターは、ステータス・優先度・期限など他の条件と組み合わせるための詳細フィルターであり、どちらを操作しても同じ`filters.tagId`へ反映して状態を同期する。「すべて」はタグ条件だけを解除し、他の条件は保持する。
   - ソートセレクトで`manual`以外を選ぶと方向トグル（↑/↓）が現れる。`manual`に戻すとトグルは消える。
 - **状態設計（出し分け）**: 検索・フィルター・ソートの変更は`TodoListPage`の既存のローディング/エラー/空/成功の4状態分岐（Unit3で確立）にそのまま乗る（`useTodos(params)`の`isLoading`/`isError`は既存分岐を再利用）。フィルター適用で0件になった場合の空状態メッセージは、Unit3のデザイン（`TodoOS v2.dc.html`のrenderVals）に倣い「条件に一致する TODO がありません」（TODOが1件も無い場合の「TODO はまだありません」とは文言を分ける）。
 - **既存デザインシステムとの整合**: Unit3で確立した`@theme`トークン（`chip-bg`/`chip-border`/`chip-fg`等）をそのまま使う。新規トークン追加は不要。
@@ -87,4 +89,5 @@ export interface ListTodosParams {
 - [代表値] 方向トグルボタンをクリックすると`asc`/`desc`が切り替わり、APIへ渡る`sortOrder`が変わる
 - [境界値] フィルター適用で0件になった場合「条件に一致する TODO がありません」が表示される（TODO自体が0件の場合の文言とは異なる）
 - [代表値] 複数フィルター（例: ステータス+期限）を同時に適用すると、両方の条件がAPIクエリパラメータに含まれる
+- [代表値] `TagSwitcher`でタグを選ぶと既存の単一タグフィルターと状態が同期し、タグ条件だけを切り替えられる
 - [回帰] 既存の`TodoListPage.test.tsx`のローディング/エラー/空/成功の4状態分岐テストが、`useTodos()`のシグネチャ変更後も green のまま

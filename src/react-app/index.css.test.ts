@@ -19,7 +19,7 @@ describe("default theme color tokens", () => {
     expect(defaultTheme).toContain("--color-primary-hover: #3f3f46;");
     expect(defaultTheme).toContain("--color-surface: #f4f4f5;");
     expect(defaultTheme).toContain("--color-chip-bg: #e4e4e7;");
-    expect(defaultTheme).toContain("--color-status-inprogress-fg: #52525b;");
+    expect(defaultTheme).toContain("--color-status-inprogress-fg: #1d4ed8;");
     expect(defaultTheme).not.toContain("#4f46e5");
   });
 
@@ -30,6 +30,33 @@ describe("default theme color tokens", () => {
 
     expect(monochromeTheme).toContain("--color-primary: #111827;");
     expect(monochromeTheme).toContain("--color-primary-hover: #000000;");
+  });
+
+  it("keeps status colors fixed across all themes", () => {
+    const expectedStatusColors = {
+      "status-todo-bg": "#f4f4f5",
+      "status-todo-fg": "#52525b",
+      "status-inprogress-bg": "#dbeafe",
+      "status-inprogress-fg": "#1d4ed8",
+      "status-done-bg": "#dcf5e7",
+      "status-done-fg": "#166534",
+      "status-canceled-bg": "#f4f4f5",
+      "status-canceled-fg": "#52525b",
+    };
+
+    for (const theme of [
+      "default",
+      "ocean",
+      "forest",
+      "sunset",
+      "lavender",
+      "monochrome",
+    ]) {
+      const colors = themeTokens(theme);
+      for (const [name, value] of Object.entries(expectedStatusColors)) {
+        expect(colors[name], `${theme}: ${name}`).toBe(value);
+      }
+    }
   });
 });
 

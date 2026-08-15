@@ -231,6 +231,43 @@ describe("TodoListItem", () => {
     expect(screen.getByText("2026-08-20")).toBeInTheDocument();
   });
 
+  it("shows an accessible description icon when a todo has a description", () => {
+    render(
+      <ul>
+        <TodoListItem
+          todo={makeTodo({ description: "補足説明" })}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
+      </ul>,
+    );
+
+    const icon = screen.getByTestId("description-icon");
+    expect(icon).toHaveAttribute("role", "img");
+    expect(icon).toHaveAttribute("aria-label", "説明あり");
+    expect(icon).toHaveAttribute("title", "説明あり");
+    expect(icon.querySelector("svg")).toBeInTheDocument();
+  });
+
+  it.each([null, "", "   "])(
+    "does not show a description icon when the description is empty (%j)",
+    (description) => {
+      render(
+        <ul>
+          <TodoListItem
+            todo={makeTodo({ description })}
+            onClick={vi.fn()}
+            onDeleteClick={vi.fn()}
+            onAdvanceStatus={vi.fn()}
+          />
+        </ul>,
+      );
+
+      expect(screen.queryByTestId("description-icon")).not.toBeInTheDocument();
+    },
+  );
+
   // [代表値] 未完了ステータスも完了・中止と同じく、左側のアイコンで識別できる
   it.each([
     ["TODO", "○", "text-status-todo-fg", "進行中"],

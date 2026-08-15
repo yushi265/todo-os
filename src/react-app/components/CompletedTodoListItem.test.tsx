@@ -79,6 +79,23 @@ describe("CompletedTodoListItem", () => {
     expect(screen.queryByText("中止", { exact: true })).not.toBeInTheDocument();
   });
 
+  it("shows the description icon when a completed todo has a description", () => {
+    render(
+      <ul>
+        <CompletedTodoListItem
+          todo={makeTodo({ description: "完了時の補足" })}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+        />
+      </ul>,
+    );
+
+    expect(screen.getByTestId("description-icon")).toHaveAttribute(
+      "aria-label",
+      "説明あり",
+    );
+  });
+
   // [デシジョンテーブル] 完了済みセクション（DONE/CANCELED）の行にはステータス進行の操作 UI が存在しない（AC-2）
   it.each([{ status: "DONE" }, { status: "CANCELED" }] as const)(
     "does not render a status-advance affordance for $status",

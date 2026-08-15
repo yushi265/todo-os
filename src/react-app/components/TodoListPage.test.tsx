@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   screen,
@@ -39,6 +40,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
   localStorage.clear();
   document.documentElement.removeAttribute("data-theme");
 });
@@ -293,6 +295,32 @@ describe("TodoListPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("automatically hides the undo toast after five seconds", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([makeTodo({ id: 9, title: "自動消去対象" })]),
+    );
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<TodoListPage />);
+    const deleteButton = await screen.findByLabelText("「自動消去対象」を削除");
+    await user.click(deleteButton);
+
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: "削除する" }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByRole("button", { name: "元に戻す" }),
+    ).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
   // [代表値] 削除対象が既に存在しない場合はトースト表示＋一覧再取得（AC-9と同型の異常系）
   it("shows a toast and refetches when the delete target no longer exists (404)", async () => {
     let todosFetchCount = 0;
@@ -347,6 +375,70 @@ describe("TodoListPage", () => {
     expect(
       screen.getByRole("dialog", { name: "タグ管理" }),
     ).toBeInTheDocument();
+  });
+
+  it("syncs the tag quick switcher with the existing single-tag filter", async () => {
+    const workTag = {
+      id: 1,
+      name: "仕事",
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+    };
+    const privateTag = {
+      id: 2,
+      name: "私用",
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+    };
+    const allTodos = [
+      makeTodo({ id: 1, title: "仕事のTODO", tags: [workTag] }),
+      makeTodo({ id: 2, title: "私用のTODO", tags: [privateTag] }),
+    ];
+    fetchMock.mockImplementation((url: string) => {
+      if (url === "/api/tags") {
+        return Promise.resolve(jsonResponse([workTag, privateTag]));
+      }
+      if (url.includes("tagId=1")) {
+        return Promise.resolve(jsonResponse([allTodos[0]]));
+      }
+      if (url.includes("tagId=2")) {
+        return Promise.resolve(jsonResponse([allTodos[1]]));
+      }
+      return Promise.resolve(jsonResponse(allTodos));
+    });
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<TodoListPage />);
+
+    const switcher = await screen.findByRole("navigation", {
+      name: "タグで切り替え",
+    });
+    expect(
+      within(switcher).getByRole("button", { name: "すべて" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(screen.getByRole("button", { name: "フィルターを追加" }));
+    await user.click(screen.getByRole("menuitem", { name: "タグ" }));
+    await user.click(screen.getByRole("menuitem", { name: "仕事" }));
+
+    expect(
+      within(switcher).getByRole("button", { name: "#仕事" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(within(switcher).getByRole("button", { name: "#私用" }));
+    expect(screen.getByText("タグ: #私用")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          ([url]) => url === "/api/todos?tagId=2&sortBy=manual&sortOrder=asc",
+        ),
+      ).toBe(true);
+    });
+
+    await user.click(screen.getByRole("button", { name: "フィルターを削除" }));
+    expect(
+      within(switcher).getByRole("button", { name: "すべて" }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("opens theme settings and applies the selected theme", async () => {

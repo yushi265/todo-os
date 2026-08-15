@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CreateTodoInput, UpdateTodoInput } from "../../shared/schemas";
 import type { TodoResponse } from "../../shared/types";
 import { useShowCompleted } from "../hooks/useShowCompleted";
@@ -18,6 +18,7 @@ import { buildFullReorderedIds } from "../lib/reorder";
 import CompletedToggle from "./CompletedToggle";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import TagManagementModal from "./TagManagementModal";
+import TagSwitcher from "./TagSwitcher";
 import ThemeSettingsModal from "./ThemeSettingsModal";
 import QuickTodoInput from "./QuickTodoInput";
 import TodoFilterBar from "./TodoFilterBar";
@@ -48,6 +49,8 @@ interface ToastState {
   message: string;
   undo?: UndoAction;
 }
+
+const TOAST_DURATION_MS = 5000;
 
 function todoToUpdateInput(todo: TodoResponse): UpdateTodoInput {
   return {
@@ -123,6 +126,13 @@ function TodoListPage() {
   const [isTagManagementOpen, setIsTagManagementOpen] = useState(false);
   const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timerId = window.setTimeout(() => setToast(null), TOAST_DURATION_MS);
+    return () => window.clearTimeout(timerId);
+  }, [toast]);
+
   const deleteMutation = useDeleteTodo();
   const advanceStatusMutation = useUpdateTodo();
   const undoMutation = useUpdateTodo();
@@ -367,6 +377,14 @@ function TodoListPage() {
 
         <main id="main-content" tabIndex={-1} aria-labelledby="page-title">
           <QuickTodoInput />
+
+          <TagSwitcher
+            tags={tags}
+            selectedTagId={filters.tagId}
+            onTagChange={(tagId) =>
+              setFilters((current) => ({ ...current, tagId }))
+            }
+          />
 
           <TodoFilterBar
             search={search}

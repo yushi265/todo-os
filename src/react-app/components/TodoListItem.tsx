@@ -15,6 +15,7 @@ import {
 } from "../lib/statusStyles";
 import TagBadge from "./TagBadge";
 import TodoCardShell from "./TodoCardShell";
+import TodoDescriptionIndicator from "./TodoDescriptionIndicator";
 import Button from "./ui/button";
 
 const DUE_DATE_STATUS_CLASSES: Record<Exclude<DueDateStatus, null>, string> = {
@@ -123,8 +124,12 @@ function TodoListItem({
         <span className="text-sm font-medium text-text-primary">
           {todo.title}
         </span>
-        {(todo.priority || todo.dueDate || todo.tags.length > 0) && (
+        {(todo.description?.trim() ||
+          todo.priority ||
+          todo.dueDate ||
+          todo.tags.length > 0) && (
           <span className="flex w-full min-w-0 flex-nowrap items-center gap-x-2 overflow-x-auto text-sm text-text-secondary sm:gap-x-1.5 sm:text-xs">
+            {todo.description?.trim() && <TodoDescriptionIndicator />}
             {todo.priority && (
               <span
                 role="img"
