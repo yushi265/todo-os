@@ -7,10 +7,13 @@ import {
   useTodos,
   useUpdateTodo,
 } from "../hooks/useTodos";
+import type { SortBy, TodoFilters } from "../hooks/useTodos";
+import { useTags } from "../hooks/useTags";
 import { nextStatus } from "../lib/statusStyles";
 import CompletedToggle from "./CompletedToggle";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import TagManagementModal from "./TagManagementModal";
+import TodoFilterBar from "./TodoFilterBar";
 import TodoFormModal from "./TodoFormModal";
 import TodoList from "./TodoList";
 
@@ -19,7 +22,22 @@ type ModalState =
 
 /** TODO 一覧画面。データ取得・状態の出し分け（読み込み中/エラー/空/成功）を統括する。 */
 function TodoListPage() {
-  const { data, isLoading, isError, refetch } = useTodos();
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<TodoFilters>({
+    status: null,
+    priority: null,
+    tagId: null,
+    due: null,
+  });
+  const [sortBy, setSortBy] = useState<SortBy>("manual");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const { data, isLoading, isError, refetch } = useTodos({
+    search,
+    filters,
+    sortBy,
+    sortOrder,
+  });
+  const { data: tags = [] } = useTags();
   const [showCompleted, setShowCompleted] = useShowCompleted();
   const [modalState, setModalState] = useState<ModalState>(null);
   const [deleteTarget, setDeleteTarget] = useState<TodoResponse | null>(null);
@@ -76,6 +94,9 @@ function TodoListPage() {
     );
   }
 
+  const hasListConditions =
+    search.length > 0 || Object.values(filters).some((value) => value !== null);
+
   return (
     <div className="min-h-screen bg-surface">
       <div className="mx-auto max-w-3xl p-4">
@@ -103,6 +124,20 @@ function TodoListPage() {
           </div>
         </header>
 
+        <TodoFilterBar
+          search={search}
+          onSearchChange={setSearch}
+          filters={filters}
+          onFiltersChange={setFilters}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSortChange={(nextSortBy, nextSortOrder) => {
+            setSortBy(nextSortBy);
+            setSortOrder(nextSortOrder);
+          }}
+          tags={tags}
+        />
+
         {isLoading && (
           <p role="status" className="py-10 text-center text-text-tertiary">
             読み込み中...
@@ -124,14 +159,20 @@ function TodoListPage() {
 
         {!isLoading && !isError && data && data.length === 0 && (
           <div className="rounded-2xl border border-dashed border-border-dashed py-10 text-center">
-            <p className="mb-4 text-text-tertiary">TODO はまだありません</p>
-            <button
-              type="button"
-              onClick={() => setModalState({ type: "create" })}
-              className="min-h-11 rounded-xl bg-primary px-6 py-3 text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover"
-            >
-              + 最初の TODO を追加
-            </button>
+            <p className="mb-4 text-text-tertiary">
+              {hasListConditions
+                ? "条件に一致する TODO がありません"
+                : "TODO はまだありません"}
+            </p>
+            {!hasListConditions && (
+              <button
+                type="button"
+                onClick={() => setModalState({ type: "create" })}
+                className="min-h-11 rounded-xl bg-primary px-6 py-3 text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover"
+              >
+                + 最初の TODO を追加
+              </button>
+            )}
           </div>
         )}
 

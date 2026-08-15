@@ -1,8 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateTodoInput, UpdateTodoInput } from "../../shared/schemas";
-import type { ErrorResponse, TodoResponse } from "../../shared/types";
+import type {
+  ErrorResponse,
+  TodoPriority,
+  TodoResponse,
+  TodoStatus,
+} from "../../shared/types";
 
 export const TODOS_QUERY_KEY = ["todos"] as const;
+
+export interface TodoFilters {
+  status: TodoStatus | null;
+  priority: TodoPriority | null;
+  tagId: number | null;
+  due: "TODAY" | "OVERDUE" | "NONE" | null;
+}
+
+export type SortBy =
+  "manual" | "dueDate" | "priority" | "createdAt" | "updatedAt";
+
+export interface ListTodosParams {
+  search?: string;
+  filters?: TodoFilters;
+  sortBy?: SortBy;
+  sortOrder?: "asc" | "desc";
+}
 
 /** service（Hono API）からのエラー応答を表す。ui 層のエラー分岐（400/404/500）に使う。 */
 export class ApiError extends Error {
@@ -24,8 +46,32 @@ async function toApiError(res: Response): Promise<ApiError> {
   }
 }
 
-async function fetchTodos(): Promise<TodoResponse[]> {
-  const res = await fetch("/api/todos");
+export async function fetchTodos(
+  params: ListTodosParams = {},
+): Promise<TodoResponse[]> {
+  const query = new URLSearchParams();
+  const filters = params.filters;
+
+  if (filters?.status !== null && filters?.status !== undefined) {
+    query.set("status", filters.status);
+  }
+  if (filters?.priority !== null && filters?.priority !== undefined) {
+    query.set("priority", filters.priority);
+  }
+  if (filters?.tagId !== null && filters?.tagId !== undefined) {
+    query.set("tagId", String(filters.tagId));
+  }
+  if (filters?.due !== null && filters?.due !== undefined) {
+    query.set("due", filters.due);
+  }
+  if (params.search) query.set("q", params.search);
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortOrder) query.set("sortOrder", params.sortOrder);
+
+  const queryString = query.toString();
+  const res = await fetch(
+    queryString ? `/api/todos?${queryString}` : "/api/todos",
+  );
   if (!res.ok) {
     throw await toApiError(res);
   }
@@ -75,10 +121,10 @@ async function deleteTodo(id: number): Promise<void> {
  * TODO 一覧取得（AC-3）。
  * 失敗時は自動リトライせず即座に isError にする（ui 側は手動の「再試行」ボタンで再取得する設計）。
  */
-export function useTodos() {
+export function useTodos(params: ListTodosParams = {}) {
   return useQuery({
-    queryKey: TODOS_QUERY_KEY,
-    queryFn: fetchTodos,
+    queryKey: [...TODOS_QUERY_KEY, params],
+    queryFn: () => fetchTodos(params),
     retry: false,
   });
 }

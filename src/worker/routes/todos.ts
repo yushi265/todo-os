@@ -1,9 +1,27 @@
 import { Hono } from "hono";
 import { drizzle, type DrizzleD1Database } from "drizzle-orm/d1";
-import { asc, eq, inArray, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  like,
+  lt,
+  notInArray,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import type { SQLiteUpdateSetSource } from "drizzle-orm/sqlite-core";
 import { tags, todos, todoTags } from "../../db/schema";
-import { createTodoSchema, updateTodoSchema } from "../../shared/schemas";
+import {
+  createTodoSchema,
+  listTodosQuerySchema,
+  updateTodoSchema,
+  type ListTodosQuery,
+} from "../../shared/schemas";
 import type {
   ErrorResponse,
   TagResponse,
@@ -15,6 +33,34 @@ const todosRoute = new Hono<{ Bindings: Env }>();
 async function findTodoById(db: DrizzleD1Database, id: number) {
   const [found] = await db.select().from(todos).where(eq(todos.id, id)).all();
   return found;
+}
+
+function todayInTokyo(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+  }).format(new Date());
+}
+
+export function buildOrderBy(
+  sortBy: ListTodosQuery["sortBy"],
+  sortOrder: "asc" | "desc",
+) {
+  const direction = sortOrder === "asc" ? asc : desc;
+  switch (sortBy) {
+    case "dueDate":
+      // Keep null due dates at the end for both directions.
+      return [asc(sql`${todos.dueDate} IS NULL`), direction(todos.dueDate)];
+    case "priority": {
+      const rank = sql`CASE ${todos.priority} WHEN 'HIGH' THEN 3 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 1 ELSE 0 END`;
+      return [direction(rank)];
+    }
+    case "createdAt":
+      return [direction(todos.createdAt)];
+    case "updatedAt":
+      return [direction(todos.updatedAt)];
+    default:
+      return [asc(todos.sortOrder)];
+  }
 }
 
 /** 新規 TODO に割り当てる sort_order（AC-2）。既存が無ければ 0、あれば既存最大値 + 1。 */
@@ -70,12 +116,55 @@ async function attachTags(
 }
 
 todosRoute.get("/", async (c) => {
+  const parsed = listTodosQuerySchema.safeParse(c.req.query());
+  if (!parsed.success) {
+    return c.json(
+      {
+        error: "Validation failed",
+        details: parsed.error.issues,
+      } satisfies ErrorResponse,
+      400,
+    );
+  }
+
+  const { status, priority, tagId, due, q, sortBy, sortOrder } = parsed.data;
   const db = drizzle(c.env.DB);
-  const result = await db
-    .select()
-    .from(todos)
-    .orderBy(asc(todos.sortOrder))
-    .all();
+  const today = todayInTokyo();
+  const conditions: SQL[] = [];
+
+  if (status) conditions.push(eq(todos.status, status));
+  if (priority) conditions.push(eq(todos.priority, priority));
+  if (due === "TODAY") conditions.push(eq(todos.dueDate, today));
+  if (due === "OVERDUE") {
+    conditions.push(lt(todos.dueDate, today));
+    conditions.push(notInArray(todos.status, ["DONE", "CANCELED"]));
+  }
+  if (due === "NONE") conditions.push(isNull(todos.dueDate));
+  if (q) {
+    const pattern = `%${q.toLowerCase()}%`;
+    conditions.push(
+      or(
+        like(sql`lower(${todos.title})`, pattern),
+        like(sql`lower(${todos.description})`, pattern),
+      )!,
+    );
+  }
+  if (tagId) {
+    conditions.push(
+      inArray(
+        todos.id,
+        db
+          .select({ id: todoTags.todoId })
+          .from(todoTags)
+          .where(eq(todoTags.tagId, tagId)),
+      ),
+    );
+  }
+
+  let query = db.select().from(todos).$dynamic();
+  if (conditions.length > 0) query = query.where(and(...conditions));
+  query = query.orderBy(...buildOrderBy(sortBy, sortOrder));
+  const result = await query.all();
   const withTags = await attachTags(db, result);
   return c.json(withTags satisfies TodoResponse[]);
 });

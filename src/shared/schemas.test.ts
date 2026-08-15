@@ -2,9 +2,59 @@ import { describe, expect, it } from "vitest";
 import {
   createTagSchema,
   createTodoSchema,
+  listTodosQuerySchema,
   updateTagSchema,
   updateTodoSchema,
 } from "./schemas";
+
+describe("listTodosQuerySchema", () => {
+  it("accepts all supported query parameters and applies defaults", () => {
+    const result = listTodosQuerySchema.safeParse({
+      status: "IN_PROGRESS",
+      priority: "HIGH",
+      tagId: "12",
+      due: "OVERDUE",
+      q: "cloud",
+      sortBy: "dueDate",
+      sortOrder: "desc",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual({
+        status: "IN_PROGRESS",
+        priority: "HIGH",
+        tagId: 12,
+        due: "OVERDUE",
+        q: "cloud",
+        sortBy: "dueDate",
+        sortOrder: "desc",
+      });
+    }
+  });
+
+  it("defaults sortBy and sortOrder when omitted", () => {
+    expect(listTodosQuerySchema.parse({})).toEqual({
+      sortBy: "manual",
+      sortOrder: "asc",
+    });
+  });
+
+  it.each([
+    ["status", { status: "INVALID" }],
+    ["priority", { priority: "URGENT" }],
+    ["due", { due: "LATER" }],
+    ["sortBy", { sortBy: "title" }],
+    ["sortOrder", { sortOrder: "up" }],
+    ["tagId", { tagId: "not-a-number" }],
+  ])("rejects an invalid %s query value", (_name, value) => {
+    expect(listTodosQuerySchema.safeParse(value).success).toBe(false);
+  });
+
+  it.each([0, -1])("rejects a non-positive tagId: %s", (tagId) => {
+    expect(listTodosQuerySchema.safeParse({ tagId }).success).toBe(false);
+  });
+});
 
 describe("createTodoSchema", () => {
   it("accepts a title with exactly 1 character", () => {

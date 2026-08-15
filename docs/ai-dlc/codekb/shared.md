@@ -2,7 +2,7 @@
 
 ## 公開インターフェース
 
-- `GET /api/todos`・`POST /api/todos`・`GET/PATCH/DELETE /api/todos/:id`（参照: `src/worker/routes/todos.ts`）。`app.route("/api/todos", todosRoute)` で `src/worker/index.ts` にマウント。`POST`/`PATCH` は `tagIds?: number[]` を受け付け、レスポンスの `TodoResponse` は常に `tags: TagResponse[]` を含む。
+- `GET /api/todos`・`POST /api/todos`・`GET/PATCH/DELETE /api/todos/:id`（参照: `src/worker/routes/todos.ts`）。`app.route("/api/todos", todosRoute)` で `src/worker/index.ts` にマウント。`POST`/`PATCH` は `tagIds?: number[]` を受け付け、レスポンスの `TodoResponse` は常に `tags: TagResponse[]` を含む。`GET /api/todos` はクエリパラメータ `status`/`priority`/`tagId`/`due`(`TODAY`/`OVERDUE`/`NONE`)/`q`/`sortBy`(`manual`/`dueDate`/`priority`/`createdAt`/`updatedAt`)/`sortOrder`(`asc`/`desc`) に対応（`listTodosQuerySchema`、`src/shared/schemas.ts`。filter-sort-search ユニットで追加）。
 - `GET /api/tags`・`POST /api/tags`・`PATCH/DELETE /api/tags/:id`（参照: `src/worker/routes/tags.ts`）。`app.route("/api/tags", tagsRoute)` で `src/worker/index.ts` にマウント。タグ名重複は `409`、存在しない `tagIds` の指定は `400`。
 - レスポンス型 `TodoResponse`・`TagResponse`・`ErrorResponse`、入力スキーマ `createTodoSchema`・`updateTodoSchema`・`createTagSchema`・`updateTagSchema`（参照: `src/shared/types.ts` / `src/shared/schemas.ts`）。service・ui 両レイヤーが import する共有契約（`docs/architecture.md` 参照）。
 
@@ -14,6 +14,9 @@
 
 ## 再利用可能な部品
 
+- `buildOrderBy(sortBy, sortOrder)`（参照: `src/worker/routes/todos.ts`）: ソートキー→Drizzleの`orderBy`配列への変換。`priority`は`CASE...ELSE 0 END`のランク式（`HIGH`=3,`MEDIUM`=2,`LOW`=1,未設定=0）、`dueDate`はNULL常に末尾（`asc(sql\`... IS NULL\`)`を先頭に固定しdirは実値側にのみ適用）。`export`済みで単体テスト可能（`src/worker/routes/todos.test.ts`、`SQLiteAsyncDialect().sqlToQuery()`でSQL文字列を検証するパターン）。
+- `todayInTokyo()`（`src/worker/routes/todos.ts`側、service用）: `src/react-app/lib/isOverdue.ts`と同じAsia/Tokyo基準の日付取得ロジックだが、Workers runtime向けに独立実装（service/uiは別バンドルのため意図的に重複）。
+- `TodoFilterBar`（参照: `src/react-app/components/TodoFilterBar.tsx`）: 検索ボックス+フィルターチップ（属性→値の2段階メニュー）+ソートセレクト+方向トグルの複合コンポーネント。Unit3で確立した`@theme`トークンを再利用し新規トークンを追加しない設計。
 - `STATUS_BADGE_CLASSES` / `STATUS_LABEL` / `PRIORITY_LABEL_CLASSES` / `nextStatus(status)`（参照: `src/react-app/lib/statusStyles.ts`）: ステータス・優先度の表示ラベルと配色クラスの静的マッピング、およびステータス進行ロジック（`TODO`→`IN_PROGRESS`→`DONE`、`DONE`/`CANCELED`は不変）。`TodoListItem`/`CompletedTodoListItem`/`TodoFormModal`が共有する（ui-visual-refresh ユニットで導入）。
 - `TodoListItem`（未完了専用）/ `CompletedTodoListItem`（完了済み専用、参照: `src/react-app/components/`）: 未完了/完了済みで情報量・レイアウトが大きく異なる場合の分割パターン。`TodoList`が`todo.status`で振り分ける。1コンポーネント内の条件分岐より見通しが良い（ui-visual-refresh ユニットで導入）。
 - `findTodoById(db, id)` / `findTagsByIds(db, tagIds)`（参照: `src/worker/routes/todos.ts`）: id 指定の 1 件取得・複数 id の存在確認+取得。GET/:id・PATCH・DELETE、`tagIds` の存在チェックで共通化。
@@ -41,10 +44,16 @@
 - **Claude Design MCP（`DesignSync`）はメインループのセッションでのみ使用可能**。Agent ツールで起動したサブエージェント（Explore・general-purpose 等）からは `ToolSearch` で発見できない（11 通りのクエリで検証済み）。デザインファイルの分析・詳細抽出はメインループ自身が直接 `DesignSync.get_file` を呼んで行う必要がある（出典: `docs/ai-dlc/retro/ui-visual-refresh.md`）。
 - `DesignSync.get_file` の結果は JSON 化された1行の巨大文字列で返り、ツール結果が大きいと `tool-results/*.txt` に保存されて `Read` が行数ベースの offset/limit で分割できない（1 行しかないため）。`python3 -c "import json; ...content..."` で JSON をデコードし実際の改行を復元したファイルをスクラッチパッドに書き出してから `Read`/`grep` する（出典: 同上）。
 
+## Codexへの委譲（advisory・filter-sort-searchで初導入）
+
+- **Codexのサンドボックス環境は`pnpm test:service`（Cloudflare Workers runtime起動を伴う）を実行できない**（`127.0.0.1` listenでEPERM。`@cloudflare/vitest-pool-workers`がMiniflare/workerdのローカルサーバーを起動できないため）。`pnpm test:ui`（jsdom・Node.jsプロセス内実行）は実行できる。Codexへservice層のTDD実装を委譲する場合、Codex自身のRED/GREEN確認は期待できず、**メインループが必ず`referee-check`で権威再検証する**前提で進める（出典: `docs/ai-dlc/retro/filter-sort-search.md`）。
+- **Codexのモデル指定**: `~/.codex/config.toml`の`model`/`model_reasoning_effort`がデフォルト設定として存在する。ユーザーの口語的な指定（例:「モデル名 max」）はreasoning effortレベルの意図である可能性が高く、モデル名にそのまま連結すると`400 model not supported`エラーになる。迷ったらモデル関連オプションを一切指定せずデフォルト設定のまま起動する。
+- **`codex:status`/`codex:result`はSkillツール経由（`disable-model-invocation`）で呼び出し禁止**。メインループは自律的に完了検知・結果取得ができず、都度ユーザーに`/codex:status <job-id>`の実行を依頼する必要がある。
+
 ## 中断・再開の運用（advisory）
 
 - worker（implementer 等）への委譲中に API エラー（マシンスリープ・セッション使用量上限等）で中断した場合、`progress.md` の worklog チェックポイントと `git status`/`pnpm test` による実物確認を組み合わせれば無損失で再開できる（3 回の中断を経て実証。出典: `docs/ai-dlc/retro/ui-visual-refresh.md`）。ただし worker が中断直前に worklog 追記そのものを完了できていないことがあるため、再開前にオーケストレーター側で実物確認し、記録漏れがあれば代理で追記してから再開させる。
 
 ## 最終更新
 
-- ui-visual-refresh / 2026-08-15（本コミットで追加。commit SHA はコミット後に確認）
+- filter-sort-search / 2026-08-15（本コミットで追加。commit SHA はコミット後に確認）
