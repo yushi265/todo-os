@@ -28,7 +28,7 @@ hard stop は既存の lefthook / CI / 人間ゲートが担い、本群は早�
 | return check | `src/returncheck/` + `return-schemas.json` | `checkreturn <schema> [<file>]` | サブエージェント返答の受領検査（必須見出し・自己矛盾） |
 | codekb-refs | `src/sensors/codekb-refs.ts` | `sensor <file>`（自動発火） | codekb の `参照:` パス切れを編集時に検査（鮮度規約の機械化） |
 | drift guard | `src/drift/` | `pnpm test` に相乗り + lefthook `aidlc-drift-check` | 散文正本（risk-tiers / ai-dlc-flow）↔ JSON ミラーと verification/ 分離の同期をテストで固定 |
-| doctor | `src/doctor/` | `doctor [--fast] [--json] [--quiet]`（SessionStart で --fast 自動実行） | ハーネス自己診断（deps / hooks 配線 / lefthook 罠 / 孤児 state / drift。mise は `.mise.toml` 実在時のみ）。read-only・修復コマンド提示のみ |
+| doctor | `src/doctor/` | `run doctor -- [--fast] [--json] [--quiet]`（SessionStart で --fast 自動実行） | ハーネス自己診断（deps / hooks 配線 / lefthook 罠 / 孤児 state / drift。mise は `.mise.toml` 実在時のみ）。read-only・修復コマンド提示のみ |
 
 各モジュールの詳細は sub-README（[`src/state/`](./src/state/README.md) / [`src/sensors/`](./src/sensors/README.md) / [`src/scopes/`](./src/scopes/README.md) / [`src/autonomy/`](./src/autonomy/README.md) / [`src/learnings/`](./src/learnings/README.md)）。
 
