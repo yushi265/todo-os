@@ -28,6 +28,6 @@ fi
 # doctor --fast: deps / hooks-wiring の欠落時のみ 1 行 NOTE（正常時は無音・ミリ秒級）。
 # doctor 自身が動かない環境では無音（既存フェイルセーフ方針を維持）。
 if [ -d "$aidlc/node_modules" ]; then
-  ( cd "$aidlc" && pnpm -s doctor --fast --quiet 2>/dev/null ) >&2 || true
+  ( cd "$aidlc" && pnpm -s run doctor -- --fast --quiet 2>/dev/null ) >&2 || true
 fi
 exit 0

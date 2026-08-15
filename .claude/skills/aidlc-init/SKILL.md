@@ -15,7 +15,7 @@ description: AI-DLC ハーネスを新しいプロジェクトに導入・初期
 
 ```bash
 pnpm -C .claude/aidlc install --ignore-workspace   # engine の依存導入（未導入なら）
-pnpm -C .claude/aidlc doctor --fast                 # deps / hooks 配線の現状確認
+pnpm -C .claude/aidlc run doctor -- --fast          # deps / hooks 配線の現状確認
 ```
 
 - 既存プロジェクトに被せる場合は、まず `.claude/` `docs/` `lefthook.yml` `CLAUDE.md` `AGENTS.md` が配置済みか確認する。
@@ -62,7 +62,7 @@ pnpm -C .claude/aidlc doctor --fast                 # deps / hooks 配線の現�
 ```bash
 pnpm -C .claude/aidlc test        # engine テスト（LAYER_FILES 等を変えたら必ず green を確認）
 pnpm -C .claude/aidlc typecheck   # 型チェック
-pnpm -C .claude/aidlc doctor      # 自己診断（drift 同期・sensor 生存を含む）
+pnpm -C .claude/aidlc run doctor --      # 自己診断（drift 同期・sensor 生存を含む）
 ```
 
 - **注意（LAYER_FILES を変えた場合）**: `src/sensors/spec-sections.test.ts` は既定のレイヤー名（`service.md`/`ui.md`）でフィクスチャを持つ。レイヤー名を変えたら、このテストのフィクスチャ（spec ファイル名）も新しいレイヤー名に置換して `pnpm test` が green になることを確認する（テストを甘くするのではなく、レイヤー名変更に追随させる）。
@@ -72,12 +72,12 @@ pnpm -C .claude/aidlc doctor      # 自己診断（drift 同期・sensor 生存�
   - `scopes.json` の security-patch → `src/scopes/resolve.test.ts`
   - `sensors.manifest.json` の sensor 追加 / 除去 → `src/sensors/manifest.test.ts` の realManifest id 集合
 - `referee.config.json` の各コマンドは、埋めた後に `pnpm -C .claude/aidlc referee-check --layer <name>` で 1 度実行し、`unavailable` でなく実際に走ることを確認する。
-- **`pnpm test` だけでなく `pnpm typecheck` と `pnpm doctor` も必ず通す**（doctor CLI を読むテストは無いため、型/実行時の破綻は test だけでは捕まらない）。
+- **`pnpm test` だけでなく `pnpm typecheck` と `pnpm -C .claude/aidlc run doctor --` も必ず通す**（doctor CLI を読むテストは無いため、型/実行時の破綻は test だけでは捕まらない）。
 
 ## 4. 人間確認（Gate・最後に 1 回）
 
 - 埋めた設定の要約（レイヤー / 各検証コマンド / 高リスク要素 / プロジェクト固有 sensor の有無 / lint・format）を提示する。
-- `pnpm -C .claude/aidlc doctor` と `pnpm -C .claude/aidlc test` の結果を証跡として添える。
+- `pnpm -C .claude/aidlc run doctor --` と `pnpm -C .claude/aidlc test` の結果を証跡として添える。
 - 承認を得てからコミットする（コミット対象リストを提示・毎回）。以降は通常の [ai-dlc-flow](../ai-dlc-flow/SKILL.md) で実装を進める。
 
 ## 原則

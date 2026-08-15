@@ -109,7 +109,7 @@ AI に実装を任せるほど「設計を読まずに書く」「過剰設計�
 ## 4. 機械強制の仕組み（settings.json / lefthook / hooks）
 
 > ハーネス自体の健全性（依存導入・フック配線・既知の環境罠・正本ミラー同期）は
-> `pnpm -C .claude/aidlc doctor` で自己診断できる（read-only）。SessionStart で `--fast` サブセットが
+> `pnpm -C .claude/aidlc run doctor --` で自己診断できる（read-only）。SessionStart で `--fast` サブセットが
 > 自動実行され、欠落時のみ NOTE が出る。新規 checkout / worktree 追加時はまず doctor を 1 回実行する。
 
 ### 編集時の自動整形（hooks）
@@ -168,7 +168,7 @@ AI-DLC の Stage routing・Gate 判定・各種検査を機械可読化した **
 pnpm -C .claude/aidlc install     # 依存導入（SessionStart で自動実行される）
 pnpm -C .claude/aidlc test        # engine の単体テスト
 pnpm -C .claude/aidlc typecheck   # 型チェック
-pnpm -C .claude/aidlc doctor      # ハーネス自己診断
+pnpm -C .claude/aidlc run doctor --     # ハーネス自己診断（pnpmの組み込みdoctorとの衝突回避）
 ```
 
 engine を持ち込まなくても、markdown のフロー（skills/rules/docs）＋ progress.md 手運用で AI-DLC は回る（engine は advisory・observability の補助）。各 hook は engine 未導入なら無音で通す（フェイルセーフ）。
