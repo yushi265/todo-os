@@ -239,11 +239,16 @@ describe("TodoListPage", () => {
     ).toBeInTheDocument();
   });
 
-  // [代表値] 確認ボタン押下で delete mutation が呼ばれ、ダイアログが閉じる
-  it("deletes the todo and closes the dialog when the confirm button is clicked", async () => {
+  // [代表値] 確認ボタン押下で削除され、元に戻すトーストが表示される
+  it("deletes the todo and offers undo after the confirm button is clicked", async () => {
     fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
       if (init?.method === "DELETE") {
         return Promise.resolve(jsonResponse(undefined, 204));
+      }
+      if (init?.method === "POST") {
+        return Promise.resolve(
+          jsonResponse(makeTodo({ id: 10, title: "削除対象タスク" }), 201),
+        );
       }
       return Promise.resolve(
         jsonResponse([makeTodo({ id: 9, title: "削除対象タスク" })]),
@@ -265,6 +270,27 @@ describe("TodoListPage", () => {
         screen.queryByRole("dialog", { name: "TODOを削除" }),
       ).not.toBeInTheDocument();
     });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "「削除対象タスク」を削除しました",
+    );
+    await user.click(screen.getByRole("button", { name: "元に戻す" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/todos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "削除対象タスク",
+          description: null,
+          priority: null,
+          dueDate: null,
+          tagIds: [],
+        }),
+      });
+    });
+    expect(
+      await screen.findByText("「削除対象タスク」を元に戻しました"),
+    ).toBeInTheDocument();
   });
 
   // [代表値] 削除対象が既に存在しない場合はトースト表示＋一覧再取得（AC-9と同型の異常系）
@@ -339,8 +365,8 @@ describe("TodoListPage", () => {
     expect(localStorage.getItem("todo-os-theme")).toBe("ocean");
   });
 
-  // [代表値] TODO のステータスバッジをクリックすると PATCH が次のステータスで呼ばれる（AC-2）
-  it("calls PATCH with the next status when the status badge on a TODO item is clicked", async () => {
+  // [代表値] TODO のステータスアイコンをクリックすると PATCH が次のステータスで呼ばれる（AC-2）
+  it("calls PATCH with the next status when the status icon on a TODO item is clicked", async () => {
     fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
       if (init?.method === "PATCH") {
         return Promise.resolve(
@@ -357,11 +383,7 @@ describe("TodoListPage", () => {
     const user = userEvent.setup();
 
     renderWithQueryClient(<TodoListPage />);
-    await user.click(
-      await screen.findByRole("button", {
-        name: "「進行対象」を「進行中」に変更",
-      }),
-    );
+    await user.click(await screen.findByTestId("status-icon-TODO"));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -372,6 +394,105 @@ describe("TodoListPage", () => {
         }),
       );
     });
+  });
+
+  // [代表値] ステータス変更成功後のトーストから変更前の全フィールドを復元できる
+  it("restores the previous todo values from the status-change undo toast", async () => {
+    const previous = makeTodo({
+      id: 9,
+      title: "進行対象",
+      description: "説明",
+      status: "TODO",
+      priority: "HIGH",
+      dueDate: "2026-09-01",
+    });
+    const updated = { ...previous, status: "IN_PROGRESS" as const };
+    let patchCount = 0;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        patchCount += 1;
+        return Promise.resolve(
+          jsonResponse(patchCount === 1 ? updated : previous, 200),
+        );
+      }
+      if (url === "/api/tags") return Promise.resolve(jsonResponse([]));
+      return Promise.resolve(jsonResponse([previous]));
+    });
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<TodoListPage />);
+    await user.click(await screen.findByTestId("status-icon-TODO"));
+    await user.click(await screen.findByRole("button", { name: "元に戻す" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/todos/9",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({
+            title: "進行対象",
+            description: "説明",
+            status: "TODO",
+            priority: "HIGH",
+            dueDate: "2026-09-01",
+            tagIds: [],
+          }),
+        }),
+      );
+    });
+    expect(
+      await screen.findByText("「進行対象」を元に戻しました"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "元に戻す" }),
+    ).not.toBeInTheDocument();
+  });
+
+  // [代表値] 編集モーダルでタイトルを変更した場合も変更前タイトルを復元できる
+  it("offers undo after saving an edited title", async () => {
+    const previous = makeTodo({ id: 9, title: "変更前タイトル" });
+    const updated = { ...previous, title: "変更後タイトル" };
+    let patchCount = 0;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        patchCount += 1;
+        return Promise.resolve(
+          jsonResponse(patchCount === 1 ? updated : previous, 200),
+        );
+      }
+      if (url === "/api/tags") return Promise.resolve(jsonResponse([]));
+      return Promise.resolve(jsonResponse([previous]));
+    });
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<TodoListPage />);
+    await user.click(await screen.findByText("変更前タイトル"));
+    const titleInput = screen.getByLabelText("タイトル");
+    await user.clear(titleInput);
+    await user.type(titleInput, "変更後タイトル");
+    await user.click(screen.getByRole("button", { name: "保存" }));
+
+    await user.click(await screen.findByRole("button", { name: "元に戻す" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/todos/9",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({
+            title: "変更前タイトル",
+            description: null,
+            status: "TODO",
+            priority: null,
+            dueDate: null,
+            tagIds: [],
+          }),
+        }),
+      );
+    });
+    expect(
+      await screen.findByText("「変更後タイトル」を元に戻しました"),
+    ).toBeInTheDocument();
   });
 
   // [代表値] IN_PROGRESS → DONE の進行では成功後に完了トーストが表示される（AC-3）
@@ -394,11 +515,7 @@ describe("TodoListPage", () => {
     const user = userEvent.setup();
 
     renderWithQueryClient(<TodoListPage />);
-    await user.click(
-      await screen.findByRole("button", {
-        name: "「完了対象」を「完了」に変更",
-      }),
-    );
+    await user.click(await screen.findByTestId("status-icon-IN_PROGRESS"));
 
     expect(
       await screen.findByText("「完了対象」を完了にしました"),
@@ -420,8 +537,8 @@ describe("TodoListPage", () => {
     );
   });
 
-  // [代表値] TODO → IN_PROGRESS の進行ではトーストが表示されない（AC-3）
-  it("does not show a toast when advancing a TODO item to IN_PROGRESS", async () => {
+  // [代表値] TODO → IN_PROGRESS の進行でも、変更を元に戻せるトーストを表示する
+  it("shows an undo toast when advancing a TODO item to IN_PROGRESS", async () => {
     fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
       if (init?.method === "PATCH") {
         return Promise.resolve(
@@ -438,11 +555,7 @@ describe("TodoListPage", () => {
     const user = userEvent.setup();
 
     renderWithQueryClient(<TodoListPage />);
-    await user.click(
-      await screen.findByRole("button", {
-        name: "「進行対象2」を「進行中」に変更",
-      }),
-    );
+    await user.click(await screen.findByTestId("status-icon-TODO"));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -450,7 +563,12 @@ describe("TodoListPage", () => {
         expect.objectContaining({ method: "PATCH" }),
       );
     });
-    expect(screen.queryByText(/を完了にしました/)).not.toBeInTheDocument();
+    expect(
+      await screen.findByText("「進行対象2」のステータスを変更しました"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "元に戻す" }),
+    ).toBeInTheDocument();
   });
 
   // [代表値] ステータス進行 PATCH が 404 → トースト表示＋一覧再取得（既存の 404 分岐パターンに準拠）
@@ -468,11 +586,7 @@ describe("TodoListPage", () => {
     const user = userEvent.setup();
 
     renderWithQueryClient(<TodoListPage />);
-    await user.click(
-      await screen.findByRole("button", {
-        name: "「消滅対象」を「進行中」に変更",
-      }),
-    );
+    await user.click(await screen.findByTestId("status-icon-TODO"));
 
     expect(
       await screen.findByText("対象の TODO が見つかりませんでした"),
@@ -500,19 +614,16 @@ describe("TodoListPage", () => {
     const user = userEvent.setup();
 
     renderWithQueryClient(<TodoListPage />);
-    await user.click(
-      await screen.findByRole("button", {
-        name: "「対象タスク」を「進行中」に変更",
-      }),
-    );
+    await user.click(await screen.findByTestId("status-icon-TODO"));
 
     expect(
       await screen.findByText("時間をおいて再度お試しください"),
     ).toBeInTheDocument();
-    // 楽観的更新をしていないため、失敗後もステータスバッジは変更前（TODO→進行中への変更ラベル）のまま
-    expect(
-      screen.getByRole("button", { name: "「対象タスク」を「進行中」に変更" }),
-    ).toBeInTheDocument();
+    // 楽観的更新をしていないため、失敗後もステータスアイコンは変更前のまま
+    expect(screen.getByTestId("status-icon-TODO")).toHaveAttribute(
+      "aria-label",
+      "「対象タスク」を「進行中」に変更",
+    );
   });
 
   // [代表値] sortBy=manual のドラッグ&ドロップで、フィルター対象外の位置を維持した
@@ -538,9 +649,7 @@ describe("TodoListPage", () => {
 
     const sourceItem = await screen.findByTestId("todo-item-1");
     const targetItem = screen.getByTestId("todo-item-3");
-    const sourceHandle = within(sourceItem).getByRole("button", {
-      name: "ドラッグして並び替え",
-    });
+    const sourceHandle = sourceItem;
     expect(sourceHandle).toHaveAttribute("draggable", "true");
 
     fireEvent.dragStart(sourceHandle);
@@ -564,9 +673,9 @@ describe("TodoListPage", () => {
     ).toEqual(["todo-item-3", "todo-item-1"]);
   });
 
-  // [デシジョンテーブル] manual 以外の各ソートではハンドルを非活性にする（AC-5）
+  // [デシジョンテーブル] manual 以外の各ソートではカードを非活性にする（AC-5）
   it.each(["dueDate", "priority", "createdAt", "updatedAt"] as const)(
-    "disables drag handles when sortBy=%s",
+    "disables card dragging when sortBy=%s",
     async (sortBy) => {
       fetchMock.mockImplementation((url: string) =>
         Promise.resolve(
@@ -581,11 +690,13 @@ describe("TodoListPage", () => {
       await user.selectOptions(await screen.findByLabelText("並び順"), sortBy);
 
       await waitFor(() => {
+        const card = screen.getByTestId("todo-item-1");
+        expect(card).toHaveAttribute("draggable", "false");
         expect(
-          within(screen.getByTestId("todo-item-1")).getByRole("button", {
+          within(card).queryByRole("button", {
             name: "ドラッグして並び替え",
           }),
-        ).toHaveAttribute("draggable", "false");
+        ).not.toBeInTheDocument();
       });
     },
   );
@@ -610,11 +721,7 @@ describe("TodoListPage", () => {
 
     const sourceItem = await screen.findByTestId("todo-item-1");
     const targetItem = screen.getByTestId("todo-item-2");
-    fireEvent.dragStart(
-      within(sourceItem).getByRole("button", {
-        name: "ドラッグして並び替え",
-      }),
-    );
+    fireEvent.dragStart(sourceItem);
     fireEvent.dragOver(targetItem);
     fireEvent.drop(targetItem);
 

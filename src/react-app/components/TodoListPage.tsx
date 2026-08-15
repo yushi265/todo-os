@@ -1,9 +1,11 @@
 import { useState } from "react";
+import type { CreateTodoInput, UpdateTodoInput } from "../../shared/schemas";
 import type { TodoResponse } from "../../shared/types";
 import { useShowCompleted } from "../hooks/useShowCompleted";
 import { useTheme } from "../hooks/useTheme";
 import {
   ApiError,
+  useCreateTodo,
   useDeleteTodo,
   useReorderTodos,
   useTodos,
@@ -25,6 +27,48 @@ import Button from "./ui/button";
 
 type ModalState =
   { type: "create" } | { type: "edit"; todo: TodoResponse } | null;
+
+interface UpdateUndoAction {
+  type: "update";
+  todoId: number;
+  title: string;
+  input: UpdateTodoInput;
+}
+
+interface RestoreUndoAction {
+  type: "restore-delete";
+  title: string;
+  status: TodoResponse["status"];
+  input: CreateTodoInput;
+}
+
+type UndoAction = UpdateUndoAction | RestoreUndoAction;
+
+interface ToastState {
+  message: string;
+  undo?: UndoAction;
+}
+
+function todoToUpdateInput(todo: TodoResponse): UpdateTodoInput {
+  return {
+    title: todo.title,
+    description: todo.description,
+    status: todo.status,
+    priority: todo.priority,
+    dueDate: todo.dueDate,
+    tagIds: todo.tags.map((tag) => tag.id),
+  };
+}
+
+function todoToCreateInput(todo: TodoResponse): CreateTodoInput {
+  return {
+    title: todo.title,
+    description: todo.description,
+    priority: todo.priority,
+    dueDate: todo.dueDate,
+    tagIds: todo.tags.map((tag) => tag.id),
+  };
+}
 
 function orderTodosByIds(
   todos: TodoResponse[],
@@ -78,10 +122,13 @@ function TodoListPage() {
   const [deleteTarget, setDeleteTarget] = useState<TodoResponse | null>(null);
   const [isTagManagementOpen, setIsTagManagementOpen] = useState(false);
   const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const deleteMutation = useDeleteTodo();
   const advanceStatusMutation = useUpdateTodo();
+  const undoMutation = useUpdateTodo();
+  const restoreMutation = useCreateTodo();
   const reorderMutation = useReorderTodos();
+  const isUndoPending = undoMutation.isPending || restoreMutation.isPending;
   const [optimisticOrderIds, setOptimisticOrderIds] = useState<number[] | null>(
     null,
   );
@@ -98,30 +145,116 @@ function TodoListPage() {
     ).length ?? 0;
 
   function handleNotFound() {
-    setToast("対象の TODO が見つかりませんでした");
+    setToast({ message: "対象の TODO が見つかりませんでした" });
     setModalState(null);
     setDeleteTarget(null);
     void refetch();
   }
 
+  function handleTodoUpdated(previous: TodoResponse, updated: TodoResponse) {
+    setToast({
+      message: `「${updated.title}」を更新しました`,
+      undo: {
+        type: "update",
+        todoId: updated.id,
+        title: updated.title,
+        input: todoToUpdateInput(previous),
+      },
+    });
+  }
+
+  function handleUndo() {
+    const undo = toast?.undo;
+    if (!undo || isUndoPending) return;
+
+    setToast({ message: "元に戻しています…" });
+    if (undo.type === "restore-delete") {
+      restoreMutation.mutate(undo.input, {
+        onSuccess: (restored) => {
+          if (undo.status === "TODO") {
+            setToast({ message: `「${undo.title}」を元に戻しました` });
+            return;
+          }
+
+          undoMutation.mutate(
+            { id: restored.id, input: { status: undo.status } },
+            {
+              onSuccess: () =>
+                setToast({ message: `「${undo.title}」を元に戻しました` }),
+              onError: (error) => {
+                if (error instanceof ApiError && error.status === 404) {
+                  handleNotFound();
+                  return;
+                }
+                setToast({
+                  message:
+                    "元に戻せませんでした。時間をおいて再度お試しください",
+                });
+              },
+            },
+          );
+        },
+        onError: (error) => {
+          if (error instanceof ApiError && error.status === 404) {
+            handleNotFound();
+            return;
+          }
+          setToast({
+            message: "元に戻せませんでした。時間をおいて再度お試しください",
+          });
+        },
+      });
+      return;
+    }
+
+    undoMutation.mutate(
+      { id: undo.todoId, input: undo.input },
+      {
+        onSuccess: () =>
+          setToast({ message: `「${undo.title}」を元に戻しました` }),
+        onError: (error) => {
+          if (error instanceof ApiError && error.status === 404) {
+            handleNotFound();
+            return;
+          }
+          setToast({
+            message: "元に戻せませんでした。時間をおいて再度お試しください",
+          });
+        },
+      },
+    );
+  }
+
   function handleDeleteConfirm() {
     if (!deleteTarget) return;
-    deleteMutation.mutate(deleteTarget.id, {
-      onSuccess: () => setDeleteTarget(null),
+    const target = deleteTarget;
+    deleteMutation.mutate(target.id, {
+      onSuccess: () => {
+        setDeleteTarget(null);
+        setToast({
+          message: `「${target.title}」を削除しました`,
+          undo: {
+            type: "restore-delete",
+            title: target.title,
+            status: target.status,
+            input: todoToCreateInput(target),
+          },
+        });
+      },
       onError: (error) => {
         if (error instanceof ApiError && error.status === 404) {
           handleNotFound();
           return;
         }
-        setToast("時間をおいて再度お試しください");
+        setToast({ message: "時間をおいて再度お試しください" });
       },
     });
   }
 
   /**
    * ステータス進行ショートカット（AC-2）。`nextStatus` のみを PATCH で送信し、
-   * `DONE` 到達時のみ完了トーストを表示する（AC-3）。404 は既存の削除時パターンに準拠する
-   * （ui.md 異常系挙動）。
+   * 成功時は変更前の値を復元できるトーストを表示する。404 は既存の削除時パターンに
+   * 準拠する（ui.md 異常系挙動）。
    */
   function handleAdvanceStatus(todo: TodoResponse) {
     const next = nextStatus(todo.status);
@@ -130,16 +263,25 @@ function TodoListPage() {
       { id: todo.id, input: { status: next } },
       {
         onSuccess: () => {
-          if (next === "DONE") {
-            setToast(`「${todo.title}」を完了にしました`);
-          }
+          setToast({
+            message:
+              next === "DONE"
+                ? `「${todo.title}」を完了にしました`
+                : `「${todo.title}」のステータスを変更しました`,
+            undo: {
+              type: "update",
+              todoId: todo.id,
+              title: todo.title,
+              input: todoToUpdateInput(todo),
+            },
+          });
         },
         onError: (error) => {
           if (error instanceof ApiError && error.status === 404) {
             handleNotFound();
             return;
           }
-          setToast("時間をおいて再度お試しください");
+          setToast({ message: "時間をおいて再度お試しください" });
         },
       },
     );
@@ -161,7 +303,7 @@ function TodoListPage() {
       {
         onError: () => {
           setOptimisticOrderIds(previousOrder);
-          setToast("時間をおいて再度お試しください");
+          setToast({ message: "時間をおいて再度お試しください" });
         },
       },
     );
@@ -313,6 +455,7 @@ function TodoListPage() {
           todo={modalState.type === "edit" ? modalState.todo : null}
           onClose={() => setModalState(null)}
           onNotFound={handleNotFound}
+          onUpdated={handleTodoUpdated}
         />
       )}
 
@@ -344,15 +487,29 @@ function TodoListPage() {
           aria-live="polite"
           className="fixed inset-x-0 bottom-24 sm:bottom-4 mx-auto flex w-fit items-center gap-3 rounded-xl bg-text-primary px-4 py-3 sm:px-3 sm:py-2 text-white shadow-[0_12px_36px_rgba(0,0,0,0.32)] animate-[toast-in_0.18s_ease-out]"
         >
-          <span className="text-sm sm:text-xs">{toast}</span>
-          <button
+          <span className="text-sm sm:text-xs">{toast.message}</span>
+          {toast.undo && (
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={handleUndo}
+              disabled={isUndoPending}
+              className="min-h-11 rounded-lg px-2 text-sm font-bold text-white hover:bg-white/10 hover:text-white sm:min-h-9 sm:text-xs"
+            >
+              元に戻す
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
             type="button"
             aria-label="閉じる"
             onClick={() => setToast(null)}
-            className="min-h-11 min-w-11 text-white/80 hover:text-white"
+            className="min-h-11 min-w-11 rounded-lg bg-transparent p-0 text-white/80 hover:bg-white/10 hover:text-white"
           >
             ×
-          </button>
+          </Button>
         </div>
       )}
     </div>
