@@ -30,17 +30,13 @@ function DeleteConfirmDialog({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-md rounded-t-[22px] rounded-b-none bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
+        className="w-full max-w-md rounded-[22px] bg-card p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)]"
       >
-        <div
-          aria-hidden="true"
-          className="mx-auto h-1 w-10 rounded-full bg-border sm:hidden"
-        />
         <p className="mb-4 text-text-primary">{message}</p>
         <div className="flex justify-end gap-2">
           <button
@@ -55,7 +51,7 @@ function DeleteConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={isPending}
-            className="min-h-11 rounded-xl bg-danger px-4 py-2 text-white hover:opacity-90 disabled:opacity-50"
+            className="min-h-11 rounded-xl bg-danger px-4 py-2 font-bold text-white hover:opacity-90 disabled:opacity-50"
           >
             削除する
           </button>

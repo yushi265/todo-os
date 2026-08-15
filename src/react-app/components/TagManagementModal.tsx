@@ -125,7 +125,7 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
             type="button"
             aria-label="閉じる"
             onClick={onClose}
-            className="min-h-11 min-w-11 text-text-tertiary hover:text-text-primary"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-surface text-text-tertiary hover:text-text-primary"
           >
             ×
           </button>
@@ -157,11 +157,11 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
                 タグはまだありません
               </p>
             ) : (
-              <ul className="divide-y divide-border-subtle rounded-xl border border-border-subtle">
+              <ul className="flex flex-col gap-1.5">
                 {tags.map((tag) => (
                   <li
                     key={tag.id}
-                    className="flex min-h-11 items-center gap-2 px-3 py-2"
+                    className="flex min-h-11 items-center gap-2 rounded-xl border border-border-subtle bg-surface px-3 py-2"
                   >
                     {editingId === tag.id ? (
                       <input
@@ -178,12 +178,12 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
                           }
                         }}
                         onBlur={() => commitEdit(tag)}
-                        className="min-h-11 flex-1 rounded-xl border border-border px-2 py-1 text-text-primary"
+                        className="min-h-11 flex-1 rounded-xl border border-primary px-2 py-1 text-text-primary"
                       />
                     ) : (
                       <>
                         <span className="flex-1 text-text-primary">
-                          {tag.name}
+                          #{tag.name}
                         </span>
                         <button
                           type="button"
@@ -236,7 +236,7 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
               type="button"
               onClick={handleCreateSubmit}
               disabled={createMutation.isPending}
-              className="min-h-11 rounded-xl bg-primary px-4 py-2 text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover disabled:opacity-50"
+              className="min-h-11 rounded-xl bg-primary px-4 py-2 font-bold text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover disabled:opacity-50"
             >
               追加
             </button>
@@ -263,7 +263,7 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-x-0 bottom-4 mx-auto flex w-fit items-center gap-3 rounded-xl bg-text-primary px-4 py-3 text-white shadow-[0_4px_16px_rgba(0,0,0,0.07)]"
+          className="fixed inset-x-0 bottom-4 mx-auto flex w-fit items-center gap-3 rounded-xl bg-text-primary px-4 py-3 text-white shadow-[0_12px_36px_rgba(0,0,0,0.32)] animate-[toast-in_0.18s_ease-out]"
         >
           <span>{toast}</span>
           <button

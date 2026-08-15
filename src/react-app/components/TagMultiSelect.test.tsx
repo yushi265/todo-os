@@ -75,7 +75,7 @@ describe("TagMultiSelect", () => {
       <TagMultiSelect selectedTagIds={[]} onChange={onChange} />,
     );
 
-    const badge = await screen.findByRole("button", { name: "仕事" });
+    const badge = await screen.findByRole("button", { name: "#仕事" });
     expect(badge).toHaveAttribute("aria-pressed", "false");
 
     await user.click(badge);
@@ -95,8 +95,9 @@ describe("TagMultiSelect", () => {
       <TagMultiSelect selectedTagIds={[1]} onChange={onChange} />,
     );
 
-    const badge = await screen.findByRole("button", { name: "仕事" });
+    const badge = await screen.findByRole("button", { name: "#仕事" });
     expect(badge).toHaveAttribute("aria-pressed", "true");
+    expect(badge).toHaveClass("bg-primary");
 
     await user.click(badge);
 

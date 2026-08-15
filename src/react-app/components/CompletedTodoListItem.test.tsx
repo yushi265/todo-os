@@ -156,8 +156,8 @@ describe("CompletedTodoListItem", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  // [代表値] 付与されたタグがバッジで表示される（AC-6）
-  it("displays all assigned tags as badges", () => {
+  // [代表値] 完了済みTODOのタグは#プレフィックス付き・薄色バッジで表示される（AC-6）
+  it("displays all assigned tags as muted badges with hash prefixes", () => {
     const todo = makeTodo({
       tags: [
         makeTag({ id: 1, name: "仕事" }),
@@ -175,8 +175,8 @@ describe("CompletedTodoListItem", () => {
       </ul>,
     );
 
-    expect(screen.getByText("仕事")).toBeInTheDocument();
-    expect(screen.getByText("私用")).toBeInTheDocument();
+    expect(screen.getByText("#仕事")).toHaveClass("text-tag-fg-muted");
+    expect(screen.getByText("#私用")).toHaveClass("text-tag-fg-muted");
   });
 
   // [境界値] タグが1件も無い TODO はタグバッジ領域が表示されない

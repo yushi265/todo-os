@@ -86,6 +86,10 @@ function TodoListPage() {
         ? data
         : orderTodosByIds(data, optimisticOrderIds)
       : data;
+  const activeCount =
+    displayedTodos?.filter(
+      (todo) => todo.status === "TODO" || todo.status === "IN_PROGRESS",
+    ).length ?? 0;
 
   function handleNotFound() {
     setToast("対象の TODO が見つかりませんでした");
@@ -163,9 +167,20 @@ function TodoListPage() {
   return (
     <div className="min-h-screen bg-surface">
       <div className="mx-auto max-w-3xl p-4">
-        <header className="mb-4 flex items-center justify-between gap-4">
-          <h1 className="text-xl font-bold text-text-primary">todo-os</h1>
-          <div className="flex items-center gap-4">
+        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="inline-block h-3 w-3 shrink-0 rounded bg-primary"
+            />
+            <h1 className="text-xl font-bold text-text-primary sm:text-2xl">
+              todo-os
+            </h1>
+            <span className="text-xs font-medium text-text-tertiary">
+              残り{activeCount}件
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
             <CompletedToggle
               checked={showCompleted}
               onChange={setShowCompleted}
@@ -173,14 +188,14 @@ function TodoListPage() {
             <button
               type="button"
               onClick={() => setIsTagManagementOpen(true)}
-              className="min-h-11 rounded-xl border border-border bg-card px-4 py-2 text-text-secondary hover:bg-surface"
+              className="min-h-11 rounded-xl border border-border bg-card px-4 py-2 text-sm text-text-secondary hover:bg-surface"
             >
               タグ管理
             </button>
             <button
               type="button"
               onClick={() => setModalState({ type: "create" })}
-              className="hidden min-h-11 rounded-xl bg-primary px-4 py-2 text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover sm:inline-block"
+              className="hidden min-h-11 rounded-xl bg-primary px-4 py-2 font-bold text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover sm:inline-block"
             >
               + 追加
             </button>
@@ -224,7 +239,7 @@ function TodoListPage() {
           !isError &&
           displayedTodos &&
           displayedTodos.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-border-dashed py-10 text-center">
+            <div className="rounded-2xl border border-dashed border-border-dashed px-5 py-10 text-center">
               <p className="mb-4 text-text-tertiary">
                 {hasListConditions
                   ? "条件に一致する TODO がありません"
@@ -234,7 +249,7 @@ function TodoListPage() {
                 <button
                   type="button"
                   onClick={() => setModalState({ type: "create" })}
-                  className="min-h-11 rounded-xl bg-primary px-6 py-3 text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover"
+                  className="hidden min-h-11 rounded-xl bg-primary px-6 py-3 font-bold text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover sm:inline-block"
                 >
                   + 最初の TODO を追加
                 </button>
@@ -262,7 +277,7 @@ function TodoListPage() {
         type="button"
         aria-label="TODOを追加"
         onClick={() => setModalState({ type: "create" })}
-        className="fixed bottom-6 right-6 z-10 flex h-14 w-14 min-h-11 min-w-11 items-center justify-center rounded-full bg-primary text-2xl text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover sm:hidden"
+        className="fixed bottom-6 right-6 z-10 flex h-14 w-14 min-h-11 min-w-11 items-center justify-center rounded-full bg-primary font-bold text-2xl text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover sm:hidden"
       >
         <span aria-hidden="true">+</span>
       </button>
@@ -294,7 +309,7 @@ function TodoListPage() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-x-0 bottom-4 mx-auto flex w-fit items-center gap-3 rounded-xl bg-text-primary px-4 py-3 text-white shadow-[0_4px_16px_rgba(0,0,0,0.07)]"
+          className="fixed inset-x-0 bottom-24 sm:bottom-4 mx-auto flex w-fit items-center gap-3 rounded-xl bg-text-primary px-4 py-3 text-white shadow-[0_12px_36px_rgba(0,0,0,0.32)] animate-[toast-in_0.18s_ease-out]"
         >
           <span>{toast}</span>
           <button

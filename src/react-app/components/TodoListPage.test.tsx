@@ -54,9 +54,61 @@ describe("TodoListPage", () => {
       "bottom-6",
       "right-6",
       "rounded-full",
+      "font-bold",
       "sm:hidden",
     );
-    expect(headerButton).toHaveClass("hidden", "sm:inline-block");
+    expect(headerButton).toHaveClass("hidden", "sm:inline-block", "font-bold");
+  });
+
+  // [代表値] AC-1: ヘッダーに色付きロゴアイコンを表示する
+  it("renders the colored logo icon in the header", async () => {
+    fetchMock.mockResolvedValue(jsonResponse([]));
+
+    renderWithQueryClient(<TodoListPage />);
+
+    const logo = (screen.getByRole("banner") as HTMLElement).querySelector(
+      'span[aria-hidden="true"].bg-primary',
+    );
+
+    expect(logo).toBeInTheDocument();
+    expect(logo).toHaveClass(
+      "inline-block",
+      "h-3",
+      "w-3",
+      "shrink-0",
+      "rounded",
+      "bg-primary",
+    );
+  });
+
+  // [代表値] AC-1: 表示中の TODO/IN_PROGRESS の件数をヘッダーに表示する
+  it("shows the remaining count for displayed active todos", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        makeTodo({ id: 1, status: "TODO" }),
+        makeTodo({ id: 2, status: "IN_PROGRESS" }),
+        makeTodo({ id: 3, status: "DONE" }),
+        makeTodo({ id: 4, status: "CANCELED" }),
+      ]),
+    );
+
+    renderWithQueryClient(<TodoListPage />);
+
+    expect(await screen.findByText("残り2件")).toBeInTheDocument();
+  });
+
+  // [境界値] AC-1: 表示中にアクティブ TODO がない場合は0件と表示する
+  it("shows zero remaining todos when displayed todos are all inactive", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        makeTodo({ id: 1, status: "DONE" }),
+        makeTodo({ id: 2, status: "CANCELED" }),
+      ]),
+    );
+
+    renderWithQueryClient(<TodoListPage />);
+
+    expect(await screen.findByText("残り0件")).toBeInTheDocument();
   });
 
   it("shows a loading indicator while the initial fetch is in flight", () => {
@@ -76,6 +128,24 @@ describe("TodoListPage", () => {
     expect(
       await screen.findByText("TODO はまだありません"),
     ).toBeInTheDocument();
+  });
+
+  // [代表値] AC-8/AC-9: 空状態の作成ボタンをPC向けに限定し、太字にする
+  it("shows the empty-state add button only from sm and makes it bold", async () => {
+    fetchMock.mockResolvedValue(jsonResponse([]));
+
+    renderWithQueryClient(<TodoListPage />);
+
+    const emptyStateButton = await screen.findByRole("button", {
+      name: "+ 最初の TODO を追加",
+    });
+
+    expect(emptyStateButton).toHaveClass(
+      "hidden",
+      "sm:inline-block",
+      "font-bold",
+    );
+    expect(emptyStateButton.parentElement).toHaveClass("px-5");
   });
 
   // [代表値] 取得エラー → エラーメッセージ + 再試行ボタンを表示
@@ -204,7 +274,12 @@ describe("TodoListPage", () => {
     const user = userEvent.setup();
 
     renderWithQueryClient(<TodoListPage />);
-    await user.click(await screen.findByRole("button", { name: "タグ管理" }));
+    const tagManagementButton = await screen.findByRole("button", {
+      name: "タグ管理",
+    });
+    expect(tagManagementButton).toHaveClass("text-sm");
+
+    await user.click(tagManagementButton);
 
     expect(
       screen.getByRole("dialog", { name: "タグ管理" }),
@@ -275,6 +350,12 @@ describe("TodoListPage", () => {
     expect(
       await screen.findByText("「完了対象」を完了にしました"),
     ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveClass(
+      "bottom-24",
+      "sm:bottom-4",
+      "animate-[toast-in_0.18s_ease-out]",
+      "shadow-[0_12px_36px_rgba(0,0,0,0.32)]",
+    );
   });
 
   // [代表値] TODO → IN_PROGRESS の進行ではトーストが表示されない（AC-3）

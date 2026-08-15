@@ -76,7 +76,64 @@ describe("TodoFormModal", () => {
       "rounded-b-none",
       "sm:rounded-[22px]",
     );
+    expect(dialog.parentElement).toHaveClass("backdrop-blur-sm");
     expect(dialog.firstElementChild).toHaveAttribute("aria-hidden", "true");
+  });
+
+  // [代表値] AC-3: 説明欄は初期表示3行
+  it("sets the description textarea to three rows", () => {
+    mockFetch(() => jsonResponse(null, 200));
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit={false}
+        todo={null}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("説明")).toHaveAttribute("rows", "3");
+  });
+
+  // [代表値] AC-3: ステータスと完了ボタンを同じflex行に配置
+  it("places the status select and complete-now button in the same flex row", () => {
+    const todo = makeTodo({ status: "TODO" });
+    mockFetch(() => jsonResponse(todo, 200));
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit={true}
+        todo={todo}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    const statusSelect = screen.getByLabelText("ステータス");
+    const completeButton = screen.getByRole("button", {
+      name: "✓ 完了にする",
+    });
+    expect(statusSelect.parentElement).toHaveClass("flex", "gap-2");
+    expect(statusSelect.parentElement).toContainElement(completeButton);
+  });
+
+  // [代表値] AC-9: 保存ボタンは太字
+  it("renders the save button with bold text", () => {
+    mockFetch(() => jsonResponse(null, 200));
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit={false}
+        todo={null}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "保存" })).toHaveClass(
+      "font-bold",
+    );
   });
 
   // [代表値] タイトル入力＋送信 → 作成 mutation が呼ばれる
@@ -252,7 +309,7 @@ describe("TodoFormModal", () => {
     );
 
     await user.type(screen.getByLabelText("タイトル"), "新規タスク");
-    await user.click(await screen.findByRole("button", { name: "仕事" }));
+    await user.click(await screen.findByRole("button", { name: "#仕事" }));
     await user.click(screen.getByRole("button", { name: "保存" }));
 
     await waitFor(() => {
@@ -287,10 +344,9 @@ describe("TodoFormModal", () => {
       />,
     );
 
-    expect(await screen.findByRole("button", { name: "仕事" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(
+      await screen.findByRole("button", { name: "#仕事" }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   // [デシジョンテーブル] 編集モードで status !== "DONE" の間は「✓ 完了にする」ボタンが表示される（AC-4）

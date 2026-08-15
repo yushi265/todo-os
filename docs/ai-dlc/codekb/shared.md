@@ -32,7 +32,9 @@
 - `useTodos()` / `useCreateTodo()` / `useUpdateTodo()` / `useDeleteTodo()`（参照: `src/react-app/hooks/useTodos.ts`）: `ApiError` で service のエラー応答（400/404/500）をラップ。一覧クエリは `retry: false`（エラー即表示のため）。
 - `useTags()` / `useCreateTag()` / `useUpdateTag()` / `useDeleteTag()` / `tagMutationErrorMessage(error)`（参照: `src/react-app/hooks/useTags.ts`）: `TagApiError` で 400/404/409 をラップ。`tagMutationErrorMessage` はエラーコード→表示文言変換の共通関数（`TagManagementModal`/`TagMultiSelect` 両方から参照）。`useDeleteTag` は成功時に `tags` と `todos` 両方のクエリキャッシュを invalidate する（タグ削除で TODO 側のタグバッジ表示も追従させるため）。
 - `useShowCompleted()`（参照: `src/react-app/hooks/useShowCompleted.ts`）: `localStorage` 連携の表示トグル状態。
-- `DeleteConfirmDialog`（参照: `src/react-app/components/DeleteConfirmDialog.tsx`）: 汎用の削除確認ダイアログ。`{title, message, onConfirm, onClose, isPending?}` を受け取る表示専用コンポーネント（mutation の呼び出し・エラー処理は呼び出し側が持つ）。`isPending` を渡さないと連打防止が効かないので、削除系コンポーネントを追加する際は必ず配線すること。`sm:`未満でボトムシート型表示（`rounded-t-[22px] rounded-b-none` + `sm:rounded-[22px]`、上部中央に`aria-hidden="true"`のハンドルバー要素）に切り替わる（mobile-responsive-polish ユニットで追加。`TodoFormModal`/`TagManagementModal`も同パターン）。
+- `DeleteConfirmDialog`（参照: `src/react-app/components/DeleteConfirmDialog.tsx`）: 汎用の削除確認ダイアログ。`{title, message, onConfirm, onClose, isPending?}` を受け取る表示専用コンポーネント（mutation の呼び出し・エラー処理は呼び出し側が持つ）。`isPending` を渡さないと連打防止が効かないので、削除系コンポーネントを追加する際は必ず配線すること。**PC・モバイル問わず常時センタリング表示**（`items-center`固定、ドラッグハンドルバー無し）。`TodoFormModal`/`TagManagementModal`はモバイル幅でボトムシート型表示（`rounded-t-[22px] rounded-b-none` + `sm:rounded-[22px]`、上部中央にハンドルバー）に切り替わるが、`DeleteConfirmDialog`だけはClaude Designの意図（削除確認は常にモーダル中央）に合わせてボトムシート化しない（mobile-responsive-polishユニットでは他モーダルと同じボトムシート化パターンを誤って流用していたが、design-conformance-polishユニットで是正）。
+- `TagBadge`（参照: `src/react-app/components/TagBadge.tsx`）: `{tag, muted?: boolean}`を受け取るタグ表示専用バッジ。`#`+タグ名で表示し、`muted`指定時は`text-tag-fg-muted`（薄色）で表示する。完了・キャンセル済み行（`CompletedTodoListItem`）は`muted`を付与、未完了行（`TodoListItem`）は付与しない、という呼び出し元による出し分けパターン（design-conformance-polishユニットで導入）。
+- タップ領域とビジュアルサイズの分離パターン（参照: `src/react-app/components/CompletedToggle.tsx`）: アクセシビリティ上のタッチターゲット最小44px（`h-11 w-11`）を外側の`<span>`で確保しつつ、内側の`<span>`で視覚的なスイッチトラックサイズ（`h-[22px] w-[38px]`）をデザイン値に縮小する二重構造。`<label htmlFor>`と`<input id>`の関連付けにより、クリック領域はラベル全体（＝外側の44px)に及ぶ（design-conformance-polishユニットで導入）。
 - 長押しタッチドラッグ（参照: `src/react-app/components/TodoList.tsx` / `TodoListItem.tsx`）: `LONG_PRESS_MS=500`・`CANCEL_THRESHOLD_PX=10`定数、`touchStateRef`（タイマーIDと開始座標を保持）、`handleTouchStart`/`handleTouchMove`/`handleTouchEnd`の3ハンドラで構成。PC版マウスD&D（`handleDrop`）と本ハンドラ（`handleTouchEnd`）の確定処理は`commitReorder(sourceId, targetId)`という共通関数に集約し、`buildFullReorderedIds`・`onReorder`呼び出しを重複させない設計（mobile-responsive-polish ユニットで導入）。
 
 ## 既知の罠
@@ -53,6 +55,9 @@
 - **context-guard誤ブロックはcontextWindow値の修正だけでは再発しうる**（値が妥当でも、長時間の1セッション内で複数回のCodex委譲+3体レビューを連続実行するとusedTokensが閾値に近づき再ブロックする）。さらに設定ファイル編集自体がEdit・Bash両方でブロックされるケースもある。**この場合は設定変更を試みる前に、まず`progress.md`へ状態を確定して`/compact`することを優先する**（コンテキスト圧迫そのものが原因のため、compactだけで設定変更なしに解消することがある。出典: `docs/ai-dlc/retro/mobile-responsive-polish.md`）。
 - **React19は`touchstart`/`touchmove`/`wheel`のネイティブイベントリスナーをルートコンテナへ`{passive: true}`で登録する**（`node_modules/react-dom/cjs/react-dom-client.development.js`で確認可能）。そのため`onTouchMove`ハンドラ内で`event.preventDefault()`を呼んでも実ブラウザでは無効になりうる（パフォーマンス最適化のためのReact標準仕様）。タッチドラッグ操作でページの意図しないスクロールを防ぐには、CSSの`touch-action: none`（Tailwindの`touch-none`）をドラッグ対象要素に指定する必要がある。jsdomの`fireEvent.touchMove`はこのpassiveリスナーの実ブラウザ挙動を再現しないため、テストでは検出できない（出典: `docs/ai-dlc/retro/mobile-responsive-polish.md`）。
 
+- **`wrangler.jsonc`の`d1_databases[].database_id`を変更すると、ローカルの`wrangler dev`（Miniflare/workerd）が参照するD1エミュレーションのストレージファイルも切り替わる**。ローカル開発用のプレースホルダーIDから本番用の実IDに差し替えた直後、ローカルで`no such table`エラーが発生する（新IDに対応する空のローカルDBを参照するため、マイグレーション未適用状態になる）。`pnpm db:migrate:local`を再実行してテーブルを作り直す必要がある（既存のローカルテストデータは失われる。出典: `docs/ai-dlc/retro/design-conformance-polish.md`）。
+- **委譲サイクル中の中間`git add -A`は、コミット確定前の別タスクの変更を無自覚に巻き込むリスクがある**。同一セッション内で複数ユニット・複数タスクを並行して進める場合、`git add -A`のたびに「承認待ちで宙に浮いている別タスクの変更」までstagedになり、最終的なセルフレビュー（3体並列）で初めて混入に気づく事態が起きた。対象ファイルを明示指定した`git add <files>`を徹底すること（出典: `docs/ai-dlc/retro/design-conformance-polish.md`）。
+
 ## Codexへの委譲（advisory・filter-sort-searchで初導入）
 
 - **Codexのサンドボックス環境は`pnpm test:service`（Cloudflare Workers runtime起動を伴う）を実行できない**（`127.0.0.1` listenでEPERM。`@cloudflare/vitest-pool-workers`がMiniflare/workerdのローカルサーバーを起動できないため）。`pnpm test:ui`（jsdom・Node.jsプロセス内実行）は実行できる。Codexへservice層のTDD実装を委譲する場合、Codex自身のRED/GREEN確認は期待できず、**メインループが必ず`referee-check`で権威再検証する**前提で進める（出典: `docs/ai-dlc/retro/filter-sort-search.md`）。
@@ -66,4 +71,4 @@
 
 ## 最終更新
 
-- mobile-responsive-polish / 2026-08-15（本コミットで追加。commit SHA はコミット後に確認）
+- design-conformance-polish / 2026-08-15（本コミットで追加。commit SHA はコミット後に確認）

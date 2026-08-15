@@ -83,8 +83,34 @@ describe("TagManagementModal", () => {
 
     renderWithQueryClient(<TagManagementModal onClose={vi.fn()} />);
 
-    expect(await screen.findByText("仕事")).toBeInTheDocument();
-    expect(screen.getByText("プライベート")).toBeInTheDocument();
+    expect(await screen.findByText("#仕事")).toBeInTheDocument();
+    expect(screen.getByText("#プライベート")).toBeInTheDocument();
+  });
+
+  // [代表値] AC-4/AC-6/AC-9: デザイン準拠のタグ管理モーダル表示
+  it("applies design classes to the close button, tag row, editing input, and add button", async () => {
+    const user = userEvent.setup();
+    const tag = makeTag({ id: 9, name: "仕事" });
+    fetchMock.mockResolvedValue(jsonResponse([tag]));
+
+    renderWithQueryClient(<TagManagementModal onClose={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "閉じる" })).toHaveClass(
+      "rounded-full",
+    );
+    expect(await screen.findByRole("listitem")).toHaveClass(
+      "rounded-xl",
+      "border-border-subtle",
+    );
+    expect(screen.getByRole("button", { name: "追加" })).toHaveClass(
+      "font-bold",
+    );
+
+    await user.click(await screen.findByLabelText("「仕事」を編集"));
+
+    expect(screen.getByLabelText("「仕事」の名前を編集")).toHaveClass(
+      "border-primary",
+    );
   });
 
   // [代表値] TagManagementModal: 新規タグ名を入力して追加 → create mutation が呼ばれる
@@ -288,5 +314,30 @@ describe("TagManagementModal", () => {
     expect(
       await screen.findByText("対象のタグが見つかりませんでした"),
     ).toBeInTheDocument();
+  });
+
+  // [代表値] AC-10: トースト通知のシャドウとアニメーションがデザイン仕様に準拠する
+  it("applies the design-conformance classes to the toast", async () => {
+    const user = userEvent.setup();
+    const tag = makeTag({ id: 10, name: "トースト確認タグ" });
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === "DELETE") {
+        return Promise.resolve(jsonResponse({ error: "Tag not found" }, 404));
+      }
+      return Promise.resolve(jsonResponse([tag]));
+    });
+
+    renderWithQueryClient(<TagManagementModal onClose={vi.fn()} />);
+
+    await user.click(
+      await screen.findByLabelText("「トースト確認タグ」を削除"),
+    );
+    await user.click(screen.getByRole("button", { name: "削除する" }));
+
+    await screen.findByText("対象のタグが見つかりませんでした");
+    expect(screen.getByRole("status")).toHaveClass(
+      "shadow-[0_12px_36px_rgba(0,0,0,0.32)]",
+      "animate-[toast-in_0.18s_ease-out]",
+    );
   });
 });

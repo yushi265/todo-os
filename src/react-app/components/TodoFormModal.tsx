@@ -175,7 +175,7 @@ function TodoFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4">
       <div
         role="dialog"
         aria-modal="true"
@@ -222,6 +222,7 @@ function TodoFormModal({
             </label>
             <textarea
               id="todo-description"
+              rows={3}
               value={values.description}
               onChange={(e) =>
                 setValues((v) => ({ ...v, description: e.target.value }))
@@ -292,34 +293,36 @@ function TodoFormModal({
               >
                 ステータス
               </label>
-              <select
-                id="todo-status"
-                value={values.status}
-                onChange={(e) =>
-                  setValues((v) => ({
-                    ...v,
-                    status: e.target.value as TodoStatus,
-                  }))
-                }
-                className="min-h-11 rounded-xl border border-border px-3 py-2 text-text-primary"
-              >
-                {STATUS_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              {/* ✓ 完了にする（AC-4）: フォーム内 state のみ変更し、送信（PATCH）は発火しない。
-                  status が既に DONE の間は不要な操作のため非表示にする（自己非表示）。 */}
-              {values.status !== "DONE" && (
-                <button
-                  type="button"
-                  onClick={() => setValues((v) => ({ ...v, status: "DONE" }))}
-                  className="mt-1 inline-flex min-h-11 w-fit items-center rounded-xl bg-status-done-bg px-3 py-1 text-sm font-medium text-status-done-fg hover:opacity-90"
+              <div className="flex gap-2">
+                <select
+                  id="todo-status"
+                  value={values.status}
+                  onChange={(e) =>
+                    setValues((v) => ({
+                      ...v,
+                      status: e.target.value as TodoStatus,
+                    }))
+                  }
+                  className="min-h-11 flex-1 rounded-xl border border-border px-3 py-2 text-text-primary"
                 >
-                  ✓ 完了にする
-                </button>
-              )}
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {/* ✓ 完了にする（AC-4）: フォーム内 state のみ変更し、送信（PATCH）は発火しない。
+                    status が既に DONE の間は不要な操作のため非表示にする（自己非表示）。 */}
+                {values.status !== "DONE" && (
+                  <button
+                    type="button"
+                    onClick={() => setValues((v) => ({ ...v, status: "DONE" }))}
+                    className="min-h-11 shrink-0 rounded-xl bg-status-done-bg px-3 text-sm font-medium text-status-done-fg hover:opacity-90"
+                  >
+                    ✓ 完了にする
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -340,7 +343,7 @@ function TodoFormModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="min-h-11 rounded-xl bg-primary px-4 py-2 text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover disabled:opacity-50"
+              className="min-h-11 rounded-xl bg-primary px-4 py-2 font-bold text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] hover:bg-primary-hover disabled:opacity-50"
             >
               保存
             </button>

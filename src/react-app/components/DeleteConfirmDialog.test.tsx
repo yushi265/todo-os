@@ -8,8 +8,8 @@ afterEach(() => {
 });
 
 describe("DeleteConfirmDialog", () => {
-  // [回帰] AC-2: 削除確認ダイアログもモバイルではボトムシート、sm 以上では中央ダイアログ
-  it("has responsive bottom-sheet classes and a mobile-only handle", () => {
+  // [代表値] AC-5: 削除確認ダイアログは画面幅に関係なく常に中央表示
+  it("keeps the dialog centered at all viewport widths", () => {
     render(
       <DeleteConfirmDialog
         title="TODOを削除"
@@ -20,12 +20,49 @@ describe("DeleteConfirmDialog", () => {
     );
 
     const dialog = screen.getByRole("dialog", { name: "TODOを削除" });
-    expect(dialog).toHaveClass(
-      "rounded-t-[22px]",
-      "rounded-b-none",
-      "sm:rounded-[22px]",
+    const overlay = dialog.parentElement;
+
+    expect(overlay).toHaveAttribute(
+      "class",
+      "fixed inset-0 z-10 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm",
     );
-    expect(dialog.firstElementChild).toHaveAttribute("aria-hidden", "true");
+    expect(overlay).not.toHaveClass("items-end", "sm:items-center");
+    expect(dialog).toHaveAttribute(
+      "class",
+      "w-full max-w-md rounded-[22px] bg-card p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)]",
+    );
+  });
+
+  // [代表値] AC-5: 常時センタリングのためボトムシート用ドラッグハンドルは表示しない
+  it("does not render a bottom-sheet drag handle", () => {
+    render(
+      <DeleteConfirmDialog
+        title="TODOを削除"
+        message="削除しますか？"
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "TODOを削除" });
+
+    expect(dialog.querySelector('[aria-hidden="true"]')).toBeNull();
+  });
+
+  // [代表値] AC-9: 削除するボタンは太字
+  it("renders the delete button with bold text", () => {
+    render(
+      <DeleteConfirmDialog
+        title="TODOを削除"
+        message="削除しますか？"
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "削除する" })).toHaveClass(
+      "font-bold",
+    );
   });
 
   // [代表値] title/message props がそのまま表示される（TODO削除・タグ削除どちらの呼び出しでも同じコンポーネントで正しく表示される）

@@ -97,6 +97,46 @@ afterEach(() => {
 });
 
 describe("TodoFilterBar", () => {
+  it("検索・フィルター・ソートバーの装飾がデザイン仕様に適合する", async () => {
+    const user = userEvent.setup();
+    renderWithQueryClient(<FilterHarness />);
+
+    const filterBar = screen.getByRole("region", {
+      name: "TODOの検索・フィルター・ソート",
+    });
+    expect(filterBar).not.toHaveClass("bg-card");
+    expect(
+      filterBar.className
+        .split(/\s+/)
+        .some((className) => className.startsWith("shadow-")),
+    ).toBe(false);
+
+    const searchInput = screen.getByRole("searchbox", { name: "TODOを検索" });
+    expect(searchInput.parentElement?.querySelector("svg")).toBeInTheDocument();
+    expect(searchInput).toHaveClass("w-full", "pl-9");
+
+    const addFilterButton = screen.getByRole("button", {
+      name: "フィルターを追加",
+    });
+    expect(addFilterButton).toHaveClass("rounded-full", "border-dashed");
+
+    expect(screen.getByLabelText("並び順")).toHaveClass("rounded-full");
+    expect(screen.getByText("並び順")).toHaveClass("text-text-quaternary");
+
+    await user.selectOptions(screen.getByLabelText("並び順"), "dueDate");
+    expect(screen.getByRole("button", { name: "降順に切り替え" })).toHaveClass(
+      "rounded-full",
+    );
+  });
+
+  it("タグフィルターのチップ値に # を付けて表示する", () => {
+    renderWithQueryClient(
+      <FilterHarness initialFilters={{ ...emptyFilters, tagId: 1 }} />,
+    );
+
+    expect(screen.getByText("タグ: #仕事")).toBeInTheDocument();
+  });
+
   it("入力した検索語を q クエリとして送信し、一覧を再取得する", async () => {
     const user = userEvent.setup();
     fetchMock.mockImplementation((url: string) =>

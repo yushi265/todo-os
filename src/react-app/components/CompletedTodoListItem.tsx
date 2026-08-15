@@ -60,7 +60,7 @@ function CompletedTodoListItem({
             className="flex flex-wrap gap-1"
           >
             {todo.tags.map((tag) => (
-              <TagBadge key={tag.id} tag={tag} />
+              <TagBadge key={tag.id} tag={tag} muted />
             ))}
           </span>
         )}

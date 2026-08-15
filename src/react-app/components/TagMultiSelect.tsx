@@ -87,11 +87,11 @@ function TagMultiSelect({ selectedTagIds, onChange }: TagMultiSelectProps) {
                 onClick={() => toggleTag(tag.id)}
                 className={
                   selected
-                    ? "min-h-11 rounded-full border border-chip-border bg-chip-bg px-3 py-1 text-sm font-medium text-chip-fg"
+                    ? "min-h-11 rounded-full border border-primary bg-primary px-3 py-1 text-sm font-medium text-white"
                     : "min-h-11 rounded-full border border-transparent bg-tag-bg px-3 py-1 text-sm text-tag-fg hover:bg-border-subtle"
                 }
               >
-                {tag.name}
+                #{tag.name}
               </button>
             );
           })}

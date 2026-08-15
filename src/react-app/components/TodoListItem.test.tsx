@@ -234,9 +234,9 @@ describe("TodoListItem", () => {
       </ul>,
     );
 
-    expect(screen.getByText("仕事")).toBeInTheDocument();
-    expect(screen.getByText("プライベート")).toBeInTheDocument();
-    expect(screen.getByText("緊急")).toBeInTheDocument();
+    expect(screen.getByText("#仕事")).toBeInTheDocument();
+    expect(screen.getByText("#プライベート")).toBeInTheDocument();
+    expect(screen.getByText("#緊急")).toBeInTheDocument();
   });
 
   // [境界値] タグが1件も無い TODO はタグバッジ領域が表示されない
