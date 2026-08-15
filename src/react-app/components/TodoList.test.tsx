@@ -5,7 +5,6 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
@@ -105,12 +104,13 @@ describe("TodoList", () => {
     expect(screen.getByText("中止タスク")).toBeInTheDocument();
   });
 
-  // [代表値] 手動並び順ではDONE/CANCELEDを含む表示中の全カードを並び替えられる
-  it("reorders completed cards together with open cards", () => {
+  // [代表値] DONE/CANCELEDは一覧の末尾に固定し、並び替え対象から除外する
+  it("keeps completed cards at the bottom and excludes them from reordering", () => {
     const todos = [
       makeTodo({ id: 1, title: "未完了", status: "TODO" }),
       makeTodo({ id: 2, title: "完了", status: "DONE" }),
       makeTodo({ id: 3, title: "中止", status: "CANCELED" }),
+      makeTodo({ id: 4, title: "進行中", status: "IN_PROGRESS" }),
     ];
     const onReorder = vi.fn();
 
@@ -126,16 +126,26 @@ describe("TodoList", () => {
       />,
     );
 
+    expect(
+      screen
+        .getAllByTestId(/^todo-item-/)
+        .map((item) => item.getAttribute("data-testid")),
+    ).toEqual(["todo-item-1", "todo-item-4", "todo-item-2", "todo-item-3"]);
+
+    const openCard = screen.getByTestId("todo-item-1");
     const completedCard = screen.getByTestId("todo-item-2");
     const canceledCard = screen.getByTestId("todo-item-3");
+    expect(openCard).toHaveAttribute("draggable", "true");
+    expect(completedCard).toHaveAttribute("draggable", "false");
+    expect(canceledCard).toHaveAttribute("draggable", "false");
     fireEvent.dragStart(completedCard);
-    fireEvent.dragOver(canceledCard);
-    fireEvent.drop(canceledCard);
+    fireEvent.dragOver(openCard);
+    fireEvent.drop(openCard);
 
-    expect(onReorder).toHaveBeenCalledWith([1, 3, 2]);
+    expect(onReorder).not.toHaveBeenCalled();
   });
 
-  // [代表値] 6点リーダー以外のカード本体からドラッグを開始できる
+  // [代表値] カード本体からドラッグを開始できる
   it("starts a drag from the card itself", () => {
     const todos = [
       makeTodo({ id: 1, title: "カード全体" }),
@@ -265,7 +275,7 @@ describe("TodoList", () => {
     },
   );
 
-  // [代表値] 未完了 TODO のステータスバッジをクリックすると onAdvanceStatus(todo) が呼ばれる
+  // [代表値] 未完了 TODO のステータスアイコンをクリックすると onAdvanceStatus(todo) が呼ばれる
   it("wires onAdvanceStatus into the open todo item", async () => {
     const todo = makeTodo({ id: 4, title: "対象", status: "TODO" });
     const onAdvanceStatus = vi.fn();
@@ -309,11 +319,7 @@ describe("TodoList", () => {
 
     const sourceItem = screen.getByTestId("todo-item-1");
     const targetItem = screen.getByTestId("todo-item-2");
-    fireEvent.dragStart(
-      within(sourceItem).getByRole("button", {
-        name: "ドラッグして並び替え",
-      }),
-    );
+    fireEvent.dragStart(sourceItem);
     fireEvent.dragOver(targetItem);
     fireEvent.drop(targetItem);
 
@@ -341,11 +347,7 @@ describe("TodoList", () => {
     );
 
     const sourceItem = screen.getByTestId("todo-item-1");
-    fireEvent.dragStart(
-      within(sourceItem).getByRole("button", {
-        name: "ドラッグして並び替え",
-      }),
-    );
+    fireEvent.dragStart(sourceItem);
     fireEvent.dragOver(sourceItem);
     fireEvent.drop(sourceItem);
 
@@ -374,9 +376,7 @@ describe("TodoList", () => {
 
     const sourceItem = screen.getByTestId("todo-item-1");
     const targetItem = screen.getByTestId("todo-item-2");
-    const sourceHandle = within(sourceItem).getByRole("button", {
-      name: "ドラッグして並び替え",
-    });
+    const sourceHandle = sourceItem;
 
     fireEvent.dragStart(sourceHandle);
     fireEvent.dragOver(targetItem);
@@ -410,11 +410,8 @@ describe("TodoList", () => {
         onReorder={onReorder}
       />,
     );
-    const sourceRow = screen.getByTestId("todo-item-1");
     const targetRow = screen.getByTestId("todo-item-2");
-    const sourceHandle = within(sourceRow).getByRole("button", {
-      name: "ドラッグして並び替え",
-    });
+    const sourceHandle = screen.getByText("先頭");
     mockElementFromPoint(targetRow);
 
     fireEvent.touchStart(sourceHandle, {
@@ -432,6 +429,35 @@ describe("TodoList", () => {
     fireEvent.touchEnd(sourceHandle);
 
     expect(onReorder).toHaveBeenCalledWith([2, 1]);
+  });
+
+  // [異常系] 長押し後に指を離しただけでは、タップによる編集を発火しない
+  it("does not open a card after a long press without a drop", () => {
+    vi.useFakeTimers();
+    const onItemClick = vi.fn();
+    render(
+      <TodoList
+        todos={[makeTodo({ id: 1, title: "長押し対象" })]}
+        showCompleted={false}
+        onItemClick={onItemClick}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled={true}
+      />,
+    );
+
+    const title = screen.getByText("長押し対象");
+    const card = screen.getByTestId("todo-item-1");
+    fireEvent.touchStart(title, {
+      touches: [{ clientX: 0, clientY: 0 }],
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    fireEvent.touchEnd(title);
+    fireEvent.click(card);
+
+    expect(onItemClick).not.toHaveBeenCalled();
   });
 
   // [異常系] 長押しドラッグ中に一覧外へ移動して指を離しても、直前の行で確定しない
@@ -453,10 +479,7 @@ describe("TodoList", () => {
         onReorder={onReorder}
       />,
     );
-    const sourceHandle = within(screen.getByTestId("todo-item-1")).getByRole(
-      "button",
-      { name: "ドラッグして並び替え" },
-    );
+    const sourceHandle = screen.getByTestId("todo-item-1");
     const targetRow = screen.getByTestId("todo-item-2");
     const elementFromPoint = mockElementFromPoint(targetRow);
 
@@ -495,10 +518,7 @@ describe("TodoList", () => {
         onReorder={onReorder}
       />,
     );
-    const handle = within(screen.getByTestId("todo-item-1")).getByRole(
-      "button",
-      { name: "ドラッグして並び替え" },
-    );
+    const handle = screen.getByTestId("todo-item-1");
     const elementFromPoint = mockElementFromPoint(null);
 
     fireEvent.touchStart(handle, {
@@ -537,9 +557,7 @@ describe("TodoList", () => {
       />,
     );
     const sourceRow = screen.getByTestId("todo-item-1");
-    const sourceHandle = within(sourceRow).getByRole("button", {
-      name: "ドラッグして並び替え",
-    });
+    const sourceHandle = sourceRow;
     const elementFromPoint = mockElementFromPoint(
       screen.getByTestId("todo-item-2"),
     );
@@ -579,9 +597,7 @@ describe("TodoList", () => {
     );
     const sourceRow = screen.getByTestId("todo-item-1");
     const targetRow = screen.getByTestId("todo-item-2");
-    const sourceHandle = within(sourceRow).getByRole("button", {
-      name: "ドラッグして並び替え",
-    });
+    const sourceHandle = sourceRow;
     const elementFromPoint = mockElementFromPoint(targetRow);
 
     fireEvent.touchStart(sourceHandle, {
@@ -627,9 +643,7 @@ describe("TodoList", () => {
     );
     const sourceRow = screen.getByTestId("todo-item-1");
     const targetRow = screen.getByTestId("todo-item-2");
-    const sourceHandle = within(sourceRow).getByRole("button", {
-      name: "ドラッグして並び替え",
-    });
+    const sourceHandle = sourceRow;
     const elementFromPoint = mockElementFromPoint(targetRow);
 
     fireEvent.touchStart(sourceHandle, {
@@ -672,10 +686,7 @@ describe("TodoList", () => {
         onReorder={onReorder}
       />,
     );
-    const handle = within(screen.getByTestId("todo-item-1")).getByRole(
-      "button",
-      { name: "ドラッグして並び替え" },
-    );
+    const handle = screen.getByTestId("todo-item-1");
     const elementFromPoint = mockElementFromPoint(null);
 
     fireEvent.touchStart(handle, {

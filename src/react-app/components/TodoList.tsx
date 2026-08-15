@@ -10,13 +10,14 @@ const COMPLETED_STATUSES: readonly TodoResponse["status"][] = [
 ];
 const LONG_PRESS_MS = 500;
 const CANCEL_THRESHOLD_PX = 10;
+const CLICK_SUPPRESSION_MS = 500;
 
 interface TodoListProps {
   todos: TodoResponse[];
   showCompleted: boolean;
   onItemClick: (todo: TodoResponse) => void;
   onDeleteClick: (todo: TodoResponse) => void;
-  /** ステータスバッジクリックによる進行ショートカット（AC-2）。未完了行にのみ配線する。 */
+  /** ステータスアイコンクリックによる進行ショートカット（AC-2）。未完了行にのみ配線する。 */
   onAdvanceStatus: (todo: TodoResponse) => void;
   dragEnabled?: boolean;
   onReorder?: (visibleIdsInNewOrder: number[]) => void;
@@ -44,6 +45,10 @@ function TodoList({
   const [dragOverId, setDragOverId] = useState<number | null>(null);
   const [keyboardDragId, setKeyboardDragId] = useState<number | null>(null);
   const [dragAnnouncement, setDragAnnouncement] = useState("");
+  const suppressClickRef = useRef(false);
+  const suppressClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const touchStateRef = useRef<{
     todoId: number;
     startX: number;
@@ -54,7 +59,10 @@ function TodoList({
     ? todos
     : todos.filter((todo) => !isCompleted(todo));
 
-  const draggableTodos = visibleTodos;
+  const openTodos = visibleTodos.filter((todo) => !isCompleted(todo));
+  const completedTodos = visibleTodos.filter(isCompleted);
+  const orderedVisibleTodos = [...openTodos, ...completedTodos];
+  const draggableTodos = openTodos;
   const draggableTodoIds = new Set(draggableTodos.map((todo) => todo.id));
 
   useEffect(() => {
@@ -81,8 +89,22 @@ function TodoList({
       if (timerId !== null && timerId !== undefined) {
         clearTimeout(timerId);
       }
+      const suppressClickTimerId = suppressClickTimerRef.current;
+      if (suppressClickTimerId !== null) {
+        clearTimeout(suppressClickTimerId);
+      }
     };
   }, []);
+
+  function suppressNextClick() {
+    suppressClickRef.current = true;
+    const previousTimerId = suppressClickTimerRef.current;
+    if (previousTimerId !== null) clearTimeout(previousTimerId);
+    suppressClickTimerRef.current = setTimeout(() => {
+      suppressClickRef.current = false;
+      suppressClickTimerRef.current = null;
+    }, CLICK_SUPPRESSION_MS);
+  }
 
   function resetTouchState() {
     const state = touchStateRef.current;
@@ -157,10 +179,7 @@ function TodoList({
     return (event: TouchEvent<HTMLElement>) => {
       if (!dragEnabled) return;
       const target = event.target as HTMLElement | null;
-      if (
-        target?.closest("button, a, input, select, textarea") &&
-        !target?.closest("[data-drag-handle]")
-      ) {
+      if (target?.closest("[data-drag-exclude], a, input, select, textarea")) {
         return;
       }
       const touch = event.touches[0];
@@ -219,15 +238,31 @@ function TodoList({
     }
   }
 
-  function handleTouchEnd() {
+  function handleTouchEnd(event: TouchEvent<HTMLElement>) {
     const state = touchStateRef.current;
     if (!state) return;
     if (state.timerId !== null) {
       clearTimeout(state.timerId);
     } else if (dragOverId !== null) {
+      event.preventDefault();
+      suppressNextClick();
       commitReorder(state.todoId, dragOverId);
+    } else {
+      event.preventDefault();
+      suppressNextClick();
     }
     resetTouchState();
+  }
+
+  function handleCardClick(todo: TodoResponse) {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      const timerId = suppressClickTimerRef.current;
+      if (timerId !== null) clearTimeout(timerId);
+      suppressClickTimerRef.current = null;
+      return;
+    }
+    onItemClick(todo);
   }
 
   function handleTouchCancel() {
@@ -307,37 +342,25 @@ function TodoList({
           role={dragAnnouncement ? "status" : undefined}
           aria-live="polite"
         >
-          TODOカードはドラッグ、またはカードにフォーカスしてスペースと上下矢印で並び替えできます。
+          未完了TODOカードはドラッグ、またはカードにフォーカスしてスペースと上下矢印で並び替えできます。
           スペースで確定、Escapeでキャンセルします。
           {dragAnnouncement}
         </p>
       )}
       <ul aria-label="TODO一覧" className="flex flex-col gap-3 sm:gap-2">
-        {visibleTodos.map((todo) =>
+        {orderedVisibleTodos.map((todo) =>
           isCompleted(todo) ? (
             <CompletedTodoListItem
               key={todo.id}
               todo={todo}
-              onClick={onItemClick}
+              onClick={handleCardClick}
               onDeleteClick={onDeleteClick}
-              dragEnabled={dragEnabled}
-              isDragOver={dragOverId === todo.id}
-              isKeyboardDragging={keyboardDragId === todo.id}
-              onDragStart={handleDragStart(todo.id)}
-              onDragOver={handleDragOver(todo.id)}
-              onDrop={handleDrop(todo.id)}
-              onDragEnd={handleDragEnd}
-              onKeyDown={handleKeyDown(todo.id)}
-              onTouchStart={handleTouchStart(todo.id)}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              onTouchCancel={handleTouchCancel}
             />
           ) : (
             <TodoListItem
               key={todo.id}
               todo={todo}
-              onClick={onItemClick}
+              onClick={handleCardClick}
               onDeleteClick={onDeleteClick}
               onAdvanceStatus={onAdvanceStatus}
               dragEnabled={dragEnabled}
