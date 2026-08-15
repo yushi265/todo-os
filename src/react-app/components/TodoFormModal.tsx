@@ -180,7 +180,7 @@ function TodoFormModal({
         role="dialog"
         aria-modal="true"
         aria-label={isEdit ? "TODOを編集" : "TODOを作成"}
-        className="w-full max-w-lg rounded-t-[22px] rounded-b-none bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[22px] rounded-b-none bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
       >
         <div
           aria-hidden="true"

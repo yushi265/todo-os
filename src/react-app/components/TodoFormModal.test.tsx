@@ -72,6 +72,8 @@ describe("TodoFormModal", () => {
 
     const dialog = screen.getByRole("dialog", { name: "TODOを作成" });
     expect(dialog).toHaveClass(
+      "max-h-[90vh]",
+      "overflow-y-auto",
       "rounded-t-[22px]",
       "rounded-b-none",
       "sm:rounded-[22px]",
