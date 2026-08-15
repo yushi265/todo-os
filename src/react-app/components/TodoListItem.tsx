@@ -24,6 +24,7 @@ interface TodoListItemProps {
   onTouchStart?: TouchEventHandler<HTMLButtonElement>;
   onTouchMove?: TouchEventHandler<HTMLButtonElement>;
   onTouchEnd?: TouchEventHandler<HTMLButtonElement>;
+  onTouchCancel?: TouchEventHandler<HTMLButtonElement>;
 }
 
 /**
@@ -42,6 +43,7 @@ function TodoListItem({
   onTouchStart,
   onTouchMove,
   onTouchEnd,
+  onTouchCancel,
   isDragOver = false,
   dragEnabled = false,
 }: TodoListItemProps) {
@@ -65,7 +67,8 @@ function TodoListItem({
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        className={`inline-flex min-h-11 min-w-11 shrink-0 touch-none items-center justify-center rounded-xl text-text-tertiary ${dragEnabled ? "cursor-grab hover:bg-surface" : "cursor-default opacity-30"}`}
+        onTouchCancel={onTouchCancel}
+        className={`inline-flex min-h-11 min-w-11 shrink-0 touch-pan-y items-center justify-center rounded-xl text-text-tertiary ${dragEnabled ? "cursor-grab hover:bg-surface" : "cursor-default opacity-30"}`}
       >
         <svg
           aria-hidden="true"

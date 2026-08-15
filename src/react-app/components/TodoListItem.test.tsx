@@ -60,6 +60,8 @@ describe("TodoListItem", () => {
     });
     expect(handle).toHaveAttribute("draggable", "true");
     expect(handle).not.toHaveClass("opacity-30");
+    expect(handle).toHaveClass("touch-pan-y");
+    expect(handle).not.toHaveClass("touch-none");
   });
 
   // [代表値] ドラッグハンドルのタッチイベントが各コールバックへ伝播する
@@ -67,6 +69,7 @@ describe("TodoListItem", () => {
     const onTouchStart = vi.fn();
     const onTouchMove = vi.fn();
     const onTouchEnd = vi.fn();
+    const onTouchCancel = vi.fn();
 
     render(
       <ul>
@@ -79,6 +82,7 @@ describe("TodoListItem", () => {
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchCancel}
         />
       </ul>,
     );
@@ -93,10 +97,12 @@ describe("TodoListItem", () => {
       touches: [{ clientX: 1, clientY: 1 }],
     });
     fireEvent.touchEnd(handle);
+    fireEvent.touchCancel(handle);
 
     expect(onTouchStart).toHaveBeenCalledOnce();
     expect(onTouchMove).toHaveBeenCalledOnce();
     expect(onTouchEnd).toHaveBeenCalledOnce();
+    expect(onTouchCancel).toHaveBeenCalledOnce();
   });
 
   // [代表値] dragEnabled=false ではドラッグハンドルが非活性

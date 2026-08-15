@@ -106,8 +106,7 @@ function handleTouchEnd() {
 
 **重要な技術的注意（テスト実装時）**: jsdom環境には`document.elementFromPoint`の実装が無い（呼び出すと`undefined`を返すか、テストが失敗する）。`TodoList.test.tsx`でこの関数を使うテストを書く際は、`vi.spyOn(document, "elementFromPoint").mockReturnValue(...)`で対象要素をモックすること。タイマーのテストには`vi.useFakeTimers()`/`vi.advanceTimersByTime(500)`を使う。
 
-**重要な技術的注意（`touchmove`の`preventDefault`が実ブラウザで無効になる問題）**: React 19は`touchstart`/`touchmove`/`wheel`のネイティブイベントリスナーをルートコンテナへ`{ passive: true }`で登録する（パフォーマンス最適化のためのReact標準仕様）。そのため、JSXの`onTouchMove`ハンドラ内で`event.preventDefault()`を呼んでも、**実ブラウザでは無効**（ページスクロールを止められない）。jsdomの`fireEvent.touchMove`はpassiveリスナーの実ブラウザ挙動を再現しないため、この問題は自動テストでは検出できない。
-対策として、ドラッグハンドル要素（`TodoListItem`のハンドルボタン）にCSSの`touch-action: none`（Tailwindの`touch-none`クラス）を指定すること。これによりブラウザ自体がそのハンドル上でのスクロールジェスチャーを解釈しなくなり、`preventDefault()`が実効しなくても長押しドラッグ中の意図しないスクロールを防げる（Claude Designの元デザイン`TodoOS Mobile.dc.html`のドラッグハンドルにも`touch-action:none`が指定されていた）。`event.preventDefault()`自体の呼び出しは残してよい（無害な防御的処理）。
+**重要な技術的注意（通常スクロールとドラッグ中のスクロール抑止の両立）**: 長押し成立前・移動量超過によるキャンセル後はページの通常スクロールを許可する必要があるため、ドラッグハンドルには`touch-action: pan-y`（Tailwindの`touch-pan-y`クラス）を指定する。長押し成立後の`touchmove`だけは、Reactのpassiveリスナーの影響を避けるため、`TodoList`が`{ passive: false, capture: true }`のネイティブ`document`リスナーで`preventDefault()`を呼び、意図しないスクロールを抑止する。`TodoList`のJSXハンドラはドロップ先の行特定を担当する。`touchcancel`ではタイマー・ドラッグ状態を破棄する。
 
 ## 実装配置
 

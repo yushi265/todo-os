@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DragEvent, TouchEvent } from "react";
 import type { TodoResponse } from "../../shared/types";
 import CompletedTodoListItem from "./CompletedTodoListItem";
@@ -55,6 +55,43 @@ function TodoList({
   const draggableTodos = visibleTodos.filter((todo) => !isCompleted(todo));
   const draggableTodoIds = new Set(draggableTodos.map((todo) => todo.id));
 
+  useEffect(() => {
+    // Reactのtouchmoveはpassiveリスナーになる環境があるため、ドラッグ成立後の
+    // スクロール抑止だけは、明示的にnon-passiveなネイティブリスナーで行う。
+    const preventScrollWhileDragging = (event: Event) => {
+      if (touchStateRef.current?.timerId === null) {
+        event.preventDefault();
+      }
+    };
+
+    document.addEventListener("touchmove", preventScrollWhileDragging, {
+      capture: true,
+      passive: false,
+    });
+
+    return () => {
+      document.removeEventListener(
+        "touchmove",
+        preventScrollWhileDragging,
+        true,
+      );
+      const timerId = touchStateRef.current?.timerId;
+      if (timerId !== null && timerId !== undefined) {
+        clearTimeout(timerId);
+      }
+    };
+  }, []);
+
+  function resetTouchState() {
+    const state = touchStateRef.current;
+    if (state?.timerId !== null && state?.timerId !== undefined) {
+      clearTimeout(state.timerId);
+    }
+    touchStateRef.current = null;
+    setDragId(null);
+    setDragOverId(null);
+  }
+
   function commitReorder(sourceId: number, targetId: number) {
     if (sourceId === targetId) return;
     const ids = draggableTodos.map((todo) => todo.id);
@@ -106,9 +143,23 @@ function TodoList({
     return (event: TouchEvent<HTMLButtonElement>) => {
       if (!dragEnabled) return;
       const touch = event.touches[0];
+      if (!touch) return;
+
+      const previousTimerId = touchStateRef.current?.timerId;
+      if (previousTimerId !== null && previousTimerId !== undefined) {
+        clearTimeout(previousTimerId);
+      }
+      touchStateRef.current = null;
+      setDragId(null);
+      setDragOverId(null);
+
       const timerId = setTimeout(() => {
+        const state = touchStateRef.current;
+        if (!state || state.todoId !== todoId || state.timerId !== timerId) {
+          return;
+        }
         setDragId(todoId);
-        if (touchStateRef.current) touchStateRef.current.timerId = null;
+        state.timerId = null;
       }, LONG_PRESS_MS);
       touchStateRef.current = {
         todoId,
@@ -123,6 +174,7 @@ function TodoList({
     const state = touchStateRef.current;
     if (!state) return;
     const touch = event.touches[0];
+    if (!touch) return;
     const dx = Math.abs(touch.clientX - state.startX);
     const dy = Math.abs(touch.clientY - state.startY);
 
@@ -141,6 +193,8 @@ function TodoList({
     const todoId = idAttr ? Number(idAttr.replace("todo-item-", "")) : NaN;
     if (!Number.isNaN(todoId) && draggableTodoIds.has(todoId)) {
       setDragOverId(todoId);
+    } else {
+      setDragOverId(null);
     }
   }
 
@@ -149,12 +203,14 @@ function TodoList({
     if (!state) return;
     if (state.timerId !== null) {
       clearTimeout(state.timerId);
-    } else if (dragId !== null && dragOverId !== null) {
-      commitReorder(dragId, dragOverId);
+    } else if (dragOverId !== null) {
+      commitReorder(state.todoId, dragOverId);
     }
-    touchStateRef.current = null;
-    setDragId(null);
-    setDragOverId(null);
+    resetTouchState();
+  }
+
+  function handleTouchCancel() {
+    resetTouchState();
   }
 
   function handleDragEnd() {
@@ -195,6 +251,7 @@ function TodoList({
             onTouchStart={handleTouchStart(todo.id)}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchCancel}
             isDragOver={dragOverId === todo.id}
           />
         ),

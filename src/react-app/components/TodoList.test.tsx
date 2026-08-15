@@ -326,6 +326,88 @@ describe("TodoList", () => {
     expect(onReorder).toHaveBeenCalledWith([2, 1]);
   });
 
+  // [異常系] 長押しドラッグ中に一覧外へ移動して指を離しても、直前の行で確定しない
+  it("does not reorder when the finger leaves the todo rows", () => {
+    vi.useFakeTimers();
+    const todos = [
+      makeTodo({ id: 1, title: "先頭" }),
+      makeTodo({ id: 2, title: "後続" }),
+    ];
+    const onReorder = vi.fn();
+    render(
+      <TodoList
+        todos={todos}
+        showCompleted={false}
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled={true}
+        onReorder={onReorder}
+      />,
+    );
+    const sourceHandle = within(screen.getByTestId("todo-item-1")).getByRole(
+      "button",
+      { name: "ドラッグして並び替え" },
+    );
+    const targetRow = screen.getByTestId("todo-item-2");
+    const elementFromPoint = mockElementFromPoint(targetRow);
+
+    fireEvent.touchStart(sourceHandle, {
+      touches: [{ clientX: 0, clientY: 0 }],
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    fireEvent.touchMove(sourceHandle, {
+      touches: [{ clientX: 20, clientY: 20 }],
+    });
+    elementFromPoint.mockReturnValueOnce(null);
+    fireEvent.touchMove(sourceHandle, {
+      touches: [{ clientX: 40, clientY: 40 }],
+    });
+    fireEvent.touchEnd(sourceHandle);
+
+    expect(targetRow).not.toHaveClass("border-chip-border", "bg-chip-bg");
+    expect(onReorder).not.toHaveBeenCalled();
+  });
+
+  // [異常系] touchcancel では長押しタイマーとドラッグ状態を破棄する
+  it("resets touch drag state when the touch is cancelled", () => {
+    vi.useFakeTimers();
+    const todo = makeTodo({ id: 1, title: "対象" });
+    const onReorder = vi.fn();
+    render(
+      <TodoList
+        todos={[todo]}
+        showCompleted={false}
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled={true}
+        onReorder={onReorder}
+      />,
+    );
+    const handle = within(screen.getByTestId("todo-item-1")).getByRole(
+      "button",
+      { name: "ドラッグして並び替え" },
+    );
+    const elementFromPoint = mockElementFromPoint(null);
+
+    fireEvent.touchStart(handle, {
+      touches: [{ clientX: 0, clientY: 0 }],
+    });
+    fireEvent.touchCancel(handle);
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    fireEvent.touchMove(handle, {
+      touches: [{ clientX: 20, clientY: 20 }],
+    });
+
+    expect(elementFromPoint).not.toHaveBeenCalled();
+    expect(onReorder).not.toHaveBeenCalled();
+  });
+
   // [境界値] 長押し成立前に10pxを超えて移動するとタイマーがキャンセルされる
   it("cancels a long press when the finger moves more than 10px", () => {
     vi.useFakeTimers();
