@@ -1,3 +1,8 @@
+import type {
+  DragEventHandler,
+  KeyboardEventHandler,
+  TouchEventHandler,
+} from "react";
 import type { TodoResponse } from "../../shared/types";
 import { STATUS_LABEL } from "../lib/statusStyles";
 import TagBadge from "./TagBadge";
@@ -6,6 +11,18 @@ interface CompletedTodoListItemProps {
   todo: TodoResponse;
   onClick: (todo: TodoResponse) => void;
   onDeleteClick: (todo: TodoResponse) => void;
+  dragEnabled?: boolean;
+  isDragOver?: boolean;
+  isKeyboardDragging?: boolean;
+  onDragStart?: DragEventHandler<HTMLElement>;
+  onDragOver?: DragEventHandler<HTMLLIElement>;
+  onDrop?: DragEventHandler<HTMLLIElement>;
+  onDragEnd?: DragEventHandler<HTMLElement>;
+  onKeyDown?: KeyboardEventHandler<HTMLLIElement>;
+  onTouchStart?: TouchEventHandler<HTMLElement>;
+  onTouchMove?: TouchEventHandler<HTMLElement>;
+  onTouchEnd?: TouchEventHandler<HTMLElement>;
+  onTouchCancel?: TouchEventHandler<HTMLElement>;
 }
 
 const ICON: Record<"DONE" | "CANCELED", string> = {
@@ -26,13 +43,39 @@ function CompletedTodoListItem({
   todo,
   onClick,
   onDeleteClick,
+  dragEnabled = false,
+  isDragOver = false,
+  isKeyboardDragging = false,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  onKeyDown,
+  onTouchStart,
+  onTouchMove,
+  onTouchEnd,
+  onTouchCancel,
 }: CompletedTodoListItemProps) {
   // props 契約上は DONE/CANCELED のみが渡される想定（TodoList が振り分ける）。
   const iconKey = todo.status === "DONE" ? "DONE" : "CANCELED";
 
   return (
     <li
-      className="flex animate-[todo-item-in_0.24s_ease-out] items-center gap-3 rounded-2xl border border-border-subtle bg-card p-4 opacity-80 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:gap-2 sm:p-3"
+      draggable={dragEnabled}
+      tabIndex={dragEnabled ? 0 : undefined}
+      aria-label={`「${todo.title}」`}
+      aria-grabbed={isKeyboardDragging}
+      aria-describedby={dragEnabled ? "todo-reorder-help" : undefined}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      onKeyDown={onKeyDown}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
+      className={`flex animate-[todo-item-in_0.24s_ease-out] items-center gap-3 rounded-2xl border p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:gap-2 sm:p-3 ${dragEnabled ? "cursor-grab" : ""} ${isDragOver || isKeyboardDragging ? "border-chip-border bg-chip-bg" : "border-border-subtle bg-card"}`}
       data-testid={`todo-item-${todo.id}`}
     >
       <span

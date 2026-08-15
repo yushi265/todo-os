@@ -172,6 +172,12 @@ function TodoListPage() {
 
   return (
     <div className="min-h-screen bg-surface">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-card focus:px-4 focus:py-3 focus:text-sm focus:font-medium focus:text-text-primary focus:shadow-lg"
+      >
+        メインコンテンツへ移動
+      </a>
       <div className="mx-auto max-w-3xl p-4">
         <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -179,7 +185,10 @@ function TodoListPage() {
               aria-hidden="true"
               className="inline-block h-3 w-3 shrink-0 rounded bg-primary"
             />
-            <h1 className="text-xl font-bold text-text-primary sm:text-2xl">
+            <h1
+              id="page-title"
+              className="text-xl font-bold text-text-primary sm:text-2xl"
+            >
               todo-os
             </h1>
             <span className="text-xs font-medium text-text-tertiary">
@@ -214,77 +223,79 @@ function TodoListPage() {
           </div>
         </header>
 
-        <QuickTodoInput />
+        <main id="main-content" tabIndex={-1} aria-labelledby="page-title">
+          <QuickTodoInput />
 
-        <TodoFilterBar
-          search={search}
-          onSearchChange={setSearch}
-          filters={filters}
-          onFiltersChange={setFilters}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSortChange={(nextSortBy, nextSortOrder) => {
-            setSortBy(nextSortBy);
-            setSortOrder(nextSortOrder);
-          }}
-          tags={tags}
-        />
+          <TodoFilterBar
+            search={search}
+            onSearchChange={setSearch}
+            filters={filters}
+            onFiltersChange={setFilters}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortChange={(nextSortBy, nextSortOrder) => {
+              setSortBy(nextSortBy);
+              setSortOrder(nextSortOrder);
+            }}
+            tags={tags}
+          />
 
-        {isLoading && (
-          <p role="status" className="py-10 text-center text-text-tertiary">
-            読み込み中...
-          </p>
-        )}
+          {isLoading && (
+            <p role="status" className="py-10 text-center text-text-tertiary">
+              読み込み中...
+            </p>
+          )}
 
-        {isError && (
-          <div className="py-10 text-center">
-            <p className="mb-4 text-danger">TODO の取得に失敗しました</p>
-            <Button
-              variant="outline"
-              onClick={() => refetch()}
-              className="font-normal sm:text-xs"
-            >
-              再試行
-            </Button>
-          </div>
-        )}
-
-        {!isLoading &&
-          !isError &&
-          displayedTodos &&
-          displayedTodos.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-border-dashed px-5 py-10 text-center">
-              <p className="mb-4 text-text-tertiary">
-                {hasListConditions
-                  ? "条件に一致する TODO がありません"
-                  : "TODO はまだありません"}
-              </p>
-              {!hasListConditions && (
-                <Button
-                  size="lg"
-                  onClick={() => setModalState({ type: "create" })}
-                  className="hidden font-bold sm:text-xs sm:inline-block"
-                >
-                  + 最初の TODO を追加
-                </Button>
-              )}
+          {isError && (
+            <div className="py-10 text-center" role="alert">
+              <p className="mb-4 text-danger">TODO の取得に失敗しました</p>
+              <Button
+                variant="outline"
+                onClick={() => refetch()}
+                className="font-normal sm:text-xs"
+              >
+                再試行
+              </Button>
             </div>
           )}
 
-        {!isLoading &&
-          !isError &&
-          displayedTodos &&
-          displayedTodos.length > 0 && (
-            <TodoList
-              todos={displayedTodos}
-              showCompleted={showCompleted}
-              onItemClick={(todo) => setModalState({ type: "edit", todo })}
-              onDeleteClick={setDeleteTarget}
-              onAdvanceStatus={handleAdvanceStatus}
-              dragEnabled={sortBy === "manual"}
-              onReorder={handleReorder}
-            />
-          )}
+          {!isLoading &&
+            !isError &&
+            displayedTodos &&
+            displayedTodos.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-border-dashed px-5 py-10 text-center">
+                <p className="mb-4 text-text-tertiary">
+                  {hasListConditions
+                    ? "条件に一致する TODO がありません"
+                    : "TODO はまだありません"}
+                </p>
+                {!hasListConditions && (
+                  <Button
+                    size="lg"
+                    onClick={() => setModalState({ type: "create" })}
+                    className="hidden font-bold sm:text-xs sm:inline-block"
+                  >
+                    + 最初の TODO を追加
+                  </Button>
+                )}
+              </div>
+            )}
+
+          {!isLoading &&
+            !isError &&
+            displayedTodos &&
+            displayedTodos.length > 0 && (
+              <TodoList
+                todos={displayedTodos}
+                showCompleted={showCompleted}
+                onItemClick={(todo) => setModalState({ type: "edit", todo })}
+                onDeleteClick={setDeleteTarget}
+                onAdvanceStatus={handleAdvanceStatus}
+                dragEnabled={sortBy === "manual"}
+                onReorder={handleReorder}
+              />
+            )}
+        </main>
       </div>
 
       <Button

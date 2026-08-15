@@ -428,8 +428,8 @@ describe("TodoListItem", () => {
     expect(statusBadge.parentElement).toBe(priorityText.parentElement);
   });
 
-  // [代表値] ステータスバッジは縦の余白を抑えたコンパクトな見た目にする
-  it("keeps the status badge visually compact without a forced 44px height", () => {
+  // [代表値] ステータスバッジは44pxのタッチターゲットを維持する
+  it("keeps the status badge keyboard and touch accessible", () => {
     const todo = makeTodo({ title: "サイズ確認", status: "TODO" });
 
     render(
@@ -446,7 +446,7 @@ describe("TodoListItem", () => {
     const statusBadge = screen.getByRole("button", {
       name: "「サイズ確認」を「進行中」に変更",
     });
-    expect(statusBadge).not.toHaveClass("min-h-11");
+    expect(statusBadge).toHaveClass("min-h-11");
     expect(statusBadge).toHaveClass("py-1");
   });
 

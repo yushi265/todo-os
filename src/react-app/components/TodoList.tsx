@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { DragEvent, TouchEvent } from "react";
+import type { DragEvent, KeyboardEvent, TouchEvent } from "react";
 import type { TodoResponse } from "../../shared/types";
 import CompletedTodoListItem from "./CompletedTodoListItem";
 import TodoListItem from "./TodoListItem";
@@ -42,6 +42,8 @@ function TodoList({
 }: TodoListProps) {
   const [dragId, setDragId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
+  const [keyboardDragId, setKeyboardDragId] = useState<number | null>(null);
+  const [dragAnnouncement, setDragAnnouncement] = useState("");
   const touchStateRef = useRef<{
     todoId: number;
     startX: number;
@@ -52,7 +54,7 @@ function TodoList({
     ? todos
     : todos.filter((todo) => !isCompleted(todo));
 
-  const draggableTodos = visibleTodos.filter((todo) => !isCompleted(todo));
+  const draggableTodos = visibleTodos;
   const draggableTodoIds = new Set(draggableTodos.map((todo) => todo.id));
 
   useEffect(() => {
@@ -90,23 +92,34 @@ function TodoList({
     touchStateRef.current = null;
     setDragId(null);
     setDragOverId(null);
+    setKeyboardDragId(null);
   }
 
-  function commitReorder(sourceId: number, targetId: number) {
-    if (sourceId === targetId) return;
+  function reorderedIds(sourceId: number, targetId: number): number[] | null {
+    if (sourceId === targetId) return null;
     const ids = draggableTodos.map((todo) => todo.id);
     const sourceIndex = ids.indexOf(sourceId);
     const targetIndex = ids.indexOf(targetId);
-    if (sourceIndex === -1 || targetIndex === -1) return;
+    if (sourceIndex === -1 || targetIndex === -1) return null;
     const [movedId] = ids.splice(sourceIndex, 1);
     ids.splice(targetIndex, 0, movedId);
+    return ids;
+  }
+
+  function commitReorder(sourceId: number, targetId: number) {
+    const ids = reorderedIds(sourceId, targetId);
+    if (!ids) return;
     onReorder(ids);
   }
 
   function handleDragStart(todoId: number) {
-    return (event: DragEvent<HTMLButtonElement>) => {
+    return (event: DragEvent<HTMLElement>) => {
       if (!dragEnabled) return;
       setDragId(todoId);
+      setKeyboardDragId(null);
+      setDragAnnouncement(
+        "並び替え中です。移動先の TODO でドロップしてください。",
+      );
       if (event.dataTransfer) {
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("text/plain", String(todoId));
@@ -136,12 +149,20 @@ function TodoList({
       commitReorder(dragId, todoId);
       setDragId(null);
       setDragOverId(null);
+      setDragAnnouncement("");
     };
   }
 
   function handleTouchStart(todoId: number) {
-    return (event: TouchEvent<HTMLButtonElement>) => {
+    return (event: TouchEvent<HTMLElement>) => {
       if (!dragEnabled) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.closest("button, a, input, select, textarea") &&
+        !target?.closest("[data-drag-handle]")
+      ) {
+        return;
+      }
       const touch = event.touches[0];
       if (!touch) return;
 
@@ -170,7 +191,7 @@ function TodoList({
     };
   }
 
-  function handleTouchMove(event: TouchEvent<HTMLButtonElement>) {
+  function handleTouchMove(event: TouchEvent<HTMLElement>) {
     const state = touchStateRef.current;
     if (!state) return;
     const touch = event.touches[0];
@@ -216,6 +237,57 @@ function TodoList({
   function handleDragEnd() {
     setDragId(null);
     setDragOverId(null);
+    setDragAnnouncement("");
+  }
+
+  function handleKeyDown(todoId: number) {
+    return (event: KeyboardEvent<HTMLLIElement>) => {
+      if (!dragEnabled) return;
+
+      if (event.key === " " || event.key === "Spacebar") {
+        event.preventDefault();
+        if (keyboardDragId === todoId) {
+          setKeyboardDragId(null);
+          setDragOverId(null);
+          setDragAnnouncement("");
+        } else {
+          setKeyboardDragId(todoId);
+          setDragOverId(todoId);
+          setDragAnnouncement(
+            `「${visibleTodos.find((todo) => todo.id === todoId)?.title ?? "TODO"}」を選択しました。上下矢印で移動し、スペースで確定します。`,
+          );
+        }
+        return;
+      }
+
+      if (event.key === "Escape" && keyboardDragId === todoId) {
+        event.preventDefault();
+        setKeyboardDragId(null);
+        setDragOverId(null);
+        setDragAnnouncement("");
+        return;
+      }
+
+      if (
+        keyboardDragId !== todoId ||
+        (event.key !== "ArrowUp" && event.key !== "ArrowDown")
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      const currentIndex = draggableTodos.findIndex(
+        (todo) => todo.id === todoId,
+      );
+      const targetIndex = currentIndex + (event.key === "ArrowUp" ? -1 : 1);
+      const target = draggableTodos[targetIndex];
+      if (!target) return;
+      commitReorder(todoId, target.id);
+      setDragOverId(target.id);
+      setDragAnnouncement(
+        `「${visibleTodos.find((todo) => todo.id === todoId)?.title ?? "TODO"}」を${targetIndex + 1}番目へ移動しました。`,
+      );
+    };
   }
 
   if (visibleTodos.length === 0) {
@@ -227,36 +299,64 @@ function TodoList({
   }
 
   return (
-    <ul className="flex flex-col gap-3 sm:gap-2">
-      {visibleTodos.map((todo) =>
-        isCompleted(todo) ? (
-          <CompletedTodoListItem
-            key={todo.id}
-            todo={todo}
-            onClick={onItemClick}
-            onDeleteClick={onDeleteClick}
-          />
-        ) : (
-          <TodoListItem
-            key={todo.id}
-            todo={todo}
-            onClick={onItemClick}
-            onDeleteClick={onDeleteClick}
-            onAdvanceStatus={onAdvanceStatus}
-            dragEnabled={dragEnabled}
-            onDragStart={handleDragStart(todo.id)}
-            onDragOver={handleDragOver(todo.id)}
-            onDrop={handleDrop(todo.id)}
-            onDragEnd={handleDragEnd}
-            onTouchStart={handleTouchStart(todo.id)}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={handleTouchCancel}
-            isDragOver={dragOverId === todo.id}
-          />
-        ),
+    <>
+      {dragEnabled && (
+        <p
+          id="todo-reorder-help"
+          className="sr-only"
+          role={dragAnnouncement ? "status" : undefined}
+          aria-live="polite"
+        >
+          TODOカードはドラッグ、またはカードにフォーカスしてスペースと上下矢印で並び替えできます。
+          スペースで確定、Escapeでキャンセルします。
+          {dragAnnouncement}
+        </p>
       )}
-    </ul>
+      <ul aria-label="TODO一覧" className="flex flex-col gap-3 sm:gap-2">
+        {visibleTodos.map((todo) =>
+          isCompleted(todo) ? (
+            <CompletedTodoListItem
+              key={todo.id}
+              todo={todo}
+              onClick={onItemClick}
+              onDeleteClick={onDeleteClick}
+              dragEnabled={dragEnabled}
+              isDragOver={dragOverId === todo.id}
+              isKeyboardDragging={keyboardDragId === todo.id}
+              onDragStart={handleDragStart(todo.id)}
+              onDragOver={handleDragOver(todo.id)}
+              onDrop={handleDrop(todo.id)}
+              onDragEnd={handleDragEnd}
+              onKeyDown={handleKeyDown(todo.id)}
+              onTouchStart={handleTouchStart(todo.id)}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchCancel}
+            />
+          ) : (
+            <TodoListItem
+              key={todo.id}
+              todo={todo}
+              onClick={onItemClick}
+              onDeleteClick={onDeleteClick}
+              onAdvanceStatus={onAdvanceStatus}
+              dragEnabled={dragEnabled}
+              onDragStart={handleDragStart(todo.id)}
+              onDragOver={handleDragOver(todo.id)}
+              onDrop={handleDrop(todo.id)}
+              onDragEnd={handleDragEnd}
+              onKeyDown={handleKeyDown(todo.id)}
+              onTouchStart={handleTouchStart(todo.id)}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchCancel}
+              isKeyboardDragging={keyboardDragId === todo.id}
+              isDragOver={dragOverId === todo.id}
+            />
+          ),
+        )}
+      </ul>
+    </>
   );
 }
 

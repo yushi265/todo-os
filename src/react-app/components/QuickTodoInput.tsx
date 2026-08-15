@@ -50,12 +50,12 @@ function QuickTodoInput() {
         onChange={(event) => setTitle(event.target.value)}
         placeholder="TODOを入力してEnterで追加"
         aria-describedby={errorMessage ? "quick-todo-error" : undefined}
-        className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-text-primary placeholder:text-text-tertiary"
+        className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary"
       />
       <button
         type="submit"
         disabled={createMutation.isPending}
-        className="min-h-11 rounded-xl bg-primary px-4 py-2 font-bold text-white shadow-[0_4px_14px_rgba(0,0,0,0.12)] hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+        className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white shadow-[0_4px_14px_rgba(0,0,0,0.12)] hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
         {createMutation.isPending ? "追加中…" : "追加"}
       </button>

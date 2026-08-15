@@ -245,6 +245,8 @@ function TodoFilterBar({
         <button
           type="button"
           aria-label="フィルターを追加"
+          aria-haspopup="menu"
+          aria-controls="todo-filter-menu"
           aria-expanded={isFilterMenuOpen}
           onClick={openAttributeMenu}
           disabled={availableAttributes.length === 0}
@@ -255,6 +257,7 @@ function TodoFilterBar({
 
         {isFilterMenuOpen && (
           <div
+            id="todo-filter-menu"
             role="menu"
             aria-label="フィルターメニュー"
             className="absolute left-0 top-full z-10 mt-2 min-w-48 rounded-xl border border-border bg-card p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"

@@ -11,7 +11,7 @@ function CompletedToggle({ checked, onChange }: CompletedToggleProps) {
       className="flex min-h-11 items-center gap-2 text-sm sm:text-xs text-text-secondary"
     >
       <span className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center">
-        <span className="relative inline-flex h-[22px] w-[38px] items-center">
+        <span className="relative inline-flex h-[22px] w-[38px] items-center focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
           <input
             id="show-completed-toggle"
             type="checkbox"

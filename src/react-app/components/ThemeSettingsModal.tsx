@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+import type { KeyboardEvent } from "react";
 import type { ThemeName } from "../hooks/useTheme";
 import { THEME_OPTIONS } from "../hooks/useTheme";
 import Button from "./ui/button";
@@ -13,12 +15,23 @@ function ThemeSettingsModal({
   onThemeChange,
   onClose,
 }: ThemeSettingsModalProps) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+  }, []);
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") onClose();
+  }
+
   return (
     <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/50 p-4 backdrop-blur-sm sm:items-center">
       <div
         role="dialog"
         aria-modal="true"
         aria-label="テーマ設定"
+        onKeyDown={handleKeyDown}
         className="w-full max-w-lg animate-[modal-in_0.2s_ease-out] rounded-[22px] bg-card p-5 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:p-6"
       >
         <div className="mb-5 flex items-center justify-between">
@@ -28,6 +41,7 @@ function ThemeSettingsModal({
           <Button
             variant="ghost"
             size="icon"
+            ref={closeButtonRef}
             aria-label="閉じる"
             onClick={onClose}
             className="flex items-center justify-center rounded-full bg-surface text-text-tertiary hover:text-text-primary"

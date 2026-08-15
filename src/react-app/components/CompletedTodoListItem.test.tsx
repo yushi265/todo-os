@@ -97,8 +97,8 @@ describe("CompletedTodoListItem", () => {
     },
   );
 
-  // [回帰] 完了済み TODO にはドラッグハンドルを追加しない
-  it("does not render a drag handle for completed todos", () => {
+  // [回帰] 手動並び順以外では完了済み TODO をドラッグ対象にしない
+  it("does not make a completed todo draggable when drag is disabled", () => {
     render(
       <ul>
         <CompletedTodoListItem
@@ -109,9 +109,28 @@ describe("CompletedTodoListItem", () => {
       </ul>,
     );
 
-    expect(
-      screen.queryByRole("button", { name: "ドラッグして並び替え" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("todo-item-1")).toHaveAttribute(
+      "draggable",
+      "false",
+    );
+  });
+
+  // [代表値] 手動並び順では完了済み TODO もカード全体をドラッグできる
+  it("makes a completed todo card draggable when drag is enabled", () => {
+    render(
+      <ul>
+        <CompletedTodoListItem
+          todo={makeTodo({ title: "完了済み" })}
+          onClick={vi.fn()}
+          onDeleteClick={vi.fn()}
+          dragEnabled
+        />
+      </ul>,
+    );
+
+    const card = screen.getByTestId("todo-item-1");
+    expect(card).toHaveAttribute("draggable", "true");
+    expect(card).toHaveAttribute("tabindex", "0");
   });
 
   // [代表値] 行クリックで onClick(todo) が正しい todo で呼ばれる

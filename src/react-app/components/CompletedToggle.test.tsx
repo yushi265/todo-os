@@ -54,6 +54,7 @@ describe("CompletedToggle", () => {
 
     const track = tapTarget.firstElementChild;
     expect(track).toHaveClass("h-[22px]", "w-[38px]");
+    expect(track).toHaveClass("focus-within:ring-2");
     if (!track) return;
 
     const knob = track.lastElementChild;

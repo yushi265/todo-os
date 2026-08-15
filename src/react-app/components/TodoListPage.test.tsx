@@ -188,6 +188,21 @@ describe("TodoListPage", () => {
     expect(await screen.findByText("配線確認タスク")).toBeInTheDocument();
   });
 
+  it("exposes a keyboard skip link and named main landmark", async () => {
+    fetchMock.mockResolvedValue(jsonResponse([]));
+
+    renderWithQueryClient(<TodoListPage />);
+
+    const skipLink = await screen.findByRole("link", {
+      name: "メインコンテンツへ移動",
+    });
+    expect(skipLink).toHaveAttribute("href", "#main-content");
+    expect(screen.getByRole("main", { name: "todo-os" })).toHaveAttribute(
+      "id",
+      "main-content",
+    );
+  });
+
   // [代表値] 一覧の行をクリックすると、その TODO の値で編集モーダルが開く
   it("opens the edit modal with the clicked todo's values", async () => {
     fetchMock.mockResolvedValue(

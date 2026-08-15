@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -102,6 +103,98 @@ describe("TodoList", () => {
     expect(screen.getByText("未完了タスク")).toBeInTheDocument();
     expect(screen.getByText("完了タスク")).toBeInTheDocument();
     expect(screen.getByText("中止タスク")).toBeInTheDocument();
+  });
+
+  // [代表値] 手動並び順ではDONE/CANCELEDを含む表示中の全カードを並び替えられる
+  it("reorders completed cards together with open cards", () => {
+    const todos = [
+      makeTodo({ id: 1, title: "未完了", status: "TODO" }),
+      makeTodo({ id: 2, title: "完了", status: "DONE" }),
+      makeTodo({ id: 3, title: "中止", status: "CANCELED" }),
+    ];
+    const onReorder = vi.fn();
+
+    render(
+      <TodoList
+        todos={todos}
+        showCompleted
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled
+        onReorder={onReorder}
+      />,
+    );
+
+    const completedCard = screen.getByTestId("todo-item-2");
+    const canceledCard = screen.getByTestId("todo-item-3");
+    fireEvent.dragStart(completedCard);
+    fireEvent.dragOver(canceledCard);
+    fireEvent.drop(canceledCard);
+
+    expect(onReorder).toHaveBeenCalledWith([1, 3, 2]);
+  });
+
+  // [代表値] 6点リーダー以外のカード本体からドラッグを開始できる
+  it("starts a drag from the card itself", () => {
+    const todos = [
+      makeTodo({ id: 1, title: "カード全体" }),
+      makeTodo({ id: 2, title: "移動先" }),
+    ];
+    const onReorder = vi.fn();
+
+    render(
+      <TodoList
+        todos={todos}
+        showCompleted={false}
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled
+        onReorder={onReorder}
+      />,
+    );
+
+    const sourceCard = screen.getByTestId("todo-item-1");
+    const targetCard = screen.getByTestId("todo-item-2");
+    expect(sourceCard).toHaveAttribute("draggable", "true");
+    fireEvent.dragStart(sourceCard);
+    fireEvent.dragOver(targetCard);
+    fireEvent.drop(targetCard);
+
+    expect(onReorder).toHaveBeenCalledWith([2, 1]);
+  });
+
+  // [状態遷移] キーボードでもカードを選択・移動・確定できる
+  it("supports keyboard reordering with Space and arrow keys", async () => {
+    const todos = [
+      makeTodo({ id: 1, title: "先頭" }),
+      makeTodo({ id: 2, title: "後続" }),
+    ];
+    const onReorder = vi.fn();
+
+    render(
+      <TodoList
+        todos={todos}
+        showCompleted={false}
+        onItemClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+        onAdvanceStatus={vi.fn()}
+        dragEnabled
+        onReorder={onReorder}
+      />,
+    );
+
+    const sourceCard = screen.getByTestId("todo-item-1");
+    fireEvent.keyDown(sourceCard, { key: " " });
+    await waitFor(() => {
+      expect(sourceCard).toHaveAttribute("aria-grabbed", "true");
+    });
+    fireEvent.keyDown(sourceCard, { key: "ArrowDown" });
+    fireEvent.keyDown(sourceCard, { key: " " });
+
+    expect(onReorder).toHaveBeenCalledWith([2, 1]);
+    expect(sourceCard).toHaveAttribute("aria-grabbed", "false");
   });
 
   // [代表値] 期限切れの TODO は絵文字マーカーで視覚的に判別できる（AC-4）

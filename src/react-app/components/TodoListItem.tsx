@@ -1,4 +1,8 @@
-import type { DragEventHandler, TouchEventHandler } from "react";
+import type {
+  DragEventHandler,
+  KeyboardEventHandler,
+  TouchEventHandler,
+} from "react";
 import type { TodoResponse } from "../../shared/types";
 import { dueDateStatus, type DueDateStatus } from "../lib/dueDateStatus";
 import {
@@ -38,14 +42,16 @@ interface TodoListItemProps {
   onAdvanceStatus: (todo: TodoResponse) => void;
   dragEnabled?: boolean;
   isDragOver?: boolean;
-  onDragStart?: DragEventHandler<HTMLButtonElement>;
+  isKeyboardDragging?: boolean;
+  onDragStart?: DragEventHandler<HTMLElement>;
   onDragOver?: DragEventHandler<HTMLLIElement>;
   onDrop?: DragEventHandler<HTMLLIElement>;
-  onDragEnd?: DragEventHandler<HTMLButtonElement>;
-  onTouchStart?: TouchEventHandler<HTMLButtonElement>;
-  onTouchMove?: TouchEventHandler<HTMLButtonElement>;
-  onTouchEnd?: TouchEventHandler<HTMLButtonElement>;
-  onTouchCancel?: TouchEventHandler<HTMLButtonElement>;
+  onDragEnd?: DragEventHandler<HTMLElement>;
+  onKeyDown?: KeyboardEventHandler<HTMLLIElement>;
+  onTouchStart?: TouchEventHandler<HTMLElement>;
+  onTouchMove?: TouchEventHandler<HTMLElement>;
+  onTouchEnd?: TouchEventHandler<HTMLElement>;
+  onTouchCancel?: TouchEventHandler<HTMLElement>;
 }
 
 /**
@@ -61,11 +67,13 @@ function TodoListItem({
   onDragOver,
   onDrop,
   onDragEnd,
+  onKeyDown,
   onTouchStart,
   onTouchMove,
   onTouchEnd,
   onTouchCancel,
   isDragOver = false,
+  isKeyboardDragging = false,
   dragEnabled = false,
 }: TodoListItemProps) {
   const dueStatus = dueDateStatus(todo.dueDate, todo.status);
@@ -75,7 +83,19 @@ function TodoListItem({
     <li
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`flex animate-[todo-item-in_0.24s_ease-out] items-center gap-2 rounded-2xl border p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] sm:gap-1.5 sm:p-3 ${isDragOver ? "border-chip-border bg-chip-bg" : "border-border-subtle bg-card"}`}
+      draggable={dragEnabled}
+      tabIndex={dragEnabled ? 0 : undefined}
+      aria-label={`「${todo.title}」`}
+      aria-grabbed={isKeyboardDragging}
+      aria-describedby={dragEnabled ? "todo-reorder-help" : undefined}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onKeyDown={onKeyDown}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
+      className={`flex animate-[todo-item-in_0.24s_ease-out] items-center gap-2 rounded-2xl border p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] sm:gap-1.5 sm:p-3 ${dragEnabled ? "cursor-grab" : ""} ${isDragOver || isKeyboardDragging ? "border-chip-border bg-chip-bg" : "border-border-subtle bg-card"}`}
       data-testid={`todo-item-${todo.id}`}
     >
       <button
@@ -83,12 +103,7 @@ function TodoListItem({
         aria-label="ドラッグして並び替え"
         title="ドラッグして並び替え"
         draggable={dragEnabled}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchCancel}
+        data-drag-handle="true"
         className={`inline-flex min-h-11 min-w-11 shrink-0 touch-pan-y items-center justify-center rounded-xl text-text-tertiary ${dragEnabled ? "cursor-grab hover:bg-surface" : "cursor-default opacity-30"}`}
       >
         <svg
@@ -122,7 +137,7 @@ function TodoListItem({
               e.stopPropagation();
               onAdvanceStatus(todo);
             }}
-            className={`inline-flex shrink-0 items-center justify-center rounded-full px-3 py-1 text-xs font-medium transition-transform active:scale-[0.98] ${STATUS_BADGE_CLASSES[todo.status]}`}
+            className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-3 py-1 text-xs font-medium transition-transform active:scale-[0.98] ${STATUS_BADGE_CLASSES[todo.status]}`}
           >
             {STATUS_LABEL[todo.status]}
           </button>
