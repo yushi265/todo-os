@@ -96,7 +96,7 @@ export const PRIORITY_ICON: Record<TodoPriority, string> = {
 | コンポーネント | 変更種別 | props | 備考 |
 |---|---|---|---|
 | `TodoListItem` | 変更 | `{ todo: TodoResponse; onClick: (todo) => void; onDeleteClick: (todo) => void; onAdvanceStatus: (todo: TodoResponse) => void }` | **未完了専用**に用途を絞る。`onAdvanceStatus` を新規追加（呼び出し元 `TodoList` が配線）。完了済み todo は本コンポーネントに渡さない（`TodoList` 側で振り分け） |
-| `CompletedTodoListItem`（新規） | 追加 | `{ todo: TodoResponse; onClick: (todo) => void; onDeleteClick: (todo) => void }` | 完了済み専用の表示コンポーネント。アイコン+取り消し線タイトル+更新日時+タグ、削除ボタンのみ。ステータス文字は重複表示しない。`updatedAt` はフォーマット変換せず SQLite の生文字列（`"YYYY-MM-DD HH:MM:SS"`）をそのまま表示する（`dueDate` 表示と同じ既存慣習に合わせる） |
+| `CompletedTodoListItem`（新規） | 追加 | `{ todo: TodoResponse; onClick: (todo) => void; onDeleteClick: (todo) => void }` | 完了済み専用の表示コンポーネント。アイコン+取り消し線タイトル+更新日時+タグ、削除ボタンのみ。UTCで保存された `updatedAt`（SQLite の生文字列または ISO 文字列）を `Asia/Tokyo` の `YYYY/MM/DD HH:mm` に変換して表示する |
 | `TodoList` | 変更 | 既存のまま（`TodoListProps`）。内部で `todo.status` により `TodoListItem` / `CompletedTodoListItem` を振り分けて描画 | `onAdvanceStatus` を追加で受け取り `TodoListItem` へ配線。呼び出し元は `TodoListPage` |
 | `TodoListPage` | 変更 | 既存のまま。内部で `useUpdateTodo()` を用いて `handleAdvanceStatus` を実装し `TodoList` へ渡す | 新規 mutation 呼び出しの追加のみ。ページ外枠に `min-h-screen bg-surface` を追加（カード型 `TodoListItem`〔白背景〕とのコントラストを出すため。`--color-surface` トークンを使用） |
 | `TodoFormModal` | 変更 | 既存のまま（`TodoFormModalProps` に変更なし） | 内部に「✓ 完了にする」ボタンを追加。フォーム内 state 操作のみで新規 props 不要 |
@@ -170,4 +170,5 @@ export const PRIORITY_ICON: Record<TodoPriority, string> = {
 - [代表値] ステータス進行 PATCH がその他エラー（5xx）→ 汎用エラートースト「時間をおいて再度お試しください」表示、ステータス表示は変更前のまま（異常系挙動表の該当行に対応するテストケースの転記漏れを補完。実装確認: 同上の手順で `TodoListPage.tsx` の該当分岐を一時的にミュータント化して RED を確認済み）
 - [代表値] 完了済み TODO（`DONE`）が取り消し線タイトル＋緑チェックアイコンで表示される
 - [代表値] 完了済み TODO（`CANCELED`）が取り消し線タイトル＋グレー×アイコンで表示される
+- [境界値] 完了済み TODO の UTC日時（SQLite形式）が日付をまたぐ場合も、更新日時を `Asia/Tokyo` の `YYYY/MM/DD HH:mm` で表示する
 - [回帰] 既存の `TodoListItem.test.tsx` / `TodoList.test.tsx` / `TodoListPage.test.tsx` / `TodoFormModal.test.tsx` / `DeleteConfirmDialog.test.tsx` / `CompletedToggle.test.tsx` / `TagManagementModal.test.tsx` / `TagBadge.test.tsx` / `TagMultiSelect.test.tsx` / `useShowCompleted.test.ts` / `isOverdue.test.ts` が全て green のまま（AC-7 の担保）。`TodoListItem.test.tsx` は完了済みケースの記述を `CompletedTodoListItem.test.tsx` へ移設する場合、移設後もケース数の純減が無いことを確認する

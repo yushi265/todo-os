@@ -1,4 +1,5 @@
 import type { TodoResponse } from "../../shared/types";
+import { formatDateTimeInTokyo } from "../lib/formatDateTime";
 import { STATUS_ICON, STATUS_ICON_CLASSES } from "../lib/statusStyles";
 import TagBadge from "./TagBadge";
 import TodoCardShell from "./TodoCardShell";
@@ -43,7 +44,7 @@ function CompletedTodoListItem({
         </span>
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-tertiary sm:text-xs">
           {todo.description?.trim() && <TodoDescriptionIndicator />}
-          <span>{todo.updatedAt}</span>
+          <span>{formatDateTimeInTokyo(todo.updatedAt)}</span>
         </span>
         {todo.tags.length > 0 && (
           <span

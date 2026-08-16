@@ -244,7 +244,7 @@ describe("CompletedTodoListItem", () => {
     const todo = makeTodo({
       id: 10,
       title: "完了密度調整確認",
-      updatedAt: "2026-08-10T00:00:00.000Z",
+      updatedAt: "2026-08-10 15:30:00",
     });
 
     render(
@@ -258,7 +258,7 @@ describe("CompletedTodoListItem", () => {
     );
 
     const row = screen.getByTestId("todo-item-10");
-    const metadata = screen.getByText(todo.updatedAt).parentElement;
+    const metadata = screen.getByText("2026/08/11 00:30").parentElement;
 
     expect(row).toHaveClass("gap-2", "sm:gap-1.5");
     expect(row).toHaveClass("p-4", "sm:p-3");
