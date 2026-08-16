@@ -134,6 +134,15 @@ pnpm db:migrate:remote # 本番D1に適用
 pnpm deploy             # デプロイ
 ```
 
+## GitHub Actionsからのデプロイ
+
+リポジトリの `main` ブランチから、GitHub Actionsの `Deploy` workflowを手動実行してデプロイできる。事前にGitHubの `production` Environmentへ次のSecretsを登録する。
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+workflowは `pnpm deploy` のみを実行する。D1マイグレーションは自動適用しないため、スキーマ変更時は上記のリモートマイグレーション手順を先に明示実行する。
+
 ## トラブルシューティング
 
 | 症状 | 対処 |
