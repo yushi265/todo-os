@@ -90,7 +90,7 @@ function TagMultiSelect({ selectedTagIds, onChange }: TagMultiSelectProps) {
             const selected = selectedTagIds.includes(tag.id);
             return (
               <Button
-                variant="secondary"
+                variant={selected ? "default" : "secondary"}
                 size="sm"
                 key={tag.id}
                 type="button"

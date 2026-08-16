@@ -3,8 +3,19 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQueryClient } from "../test-utils";
 import QuickTodoInput from "./QuickTodoInput";
+import type { TagResponse } from "../../shared/types";
 
 let fetchMock: ReturnType<typeof vi.fn>;
+
+function makeTag(overrides: Partial<TagResponse> = {}): TagResponse {
+  return {
+    id: 1,
+    name: "仕事",
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
 
 beforeEach(() => {
   fetchMock = vi.fn();
@@ -27,6 +38,7 @@ describe("QuickTodoInput", () => {
     expect(screen.getByRole("button", { name: "追加" })).toHaveClass(
       "min-h-11",
     );
+    expect(screen.queryByLabelText("追加時のタグ")).not.toBeInTheDocument();
     expect(form).toBeInTheDocument();
   });
 
@@ -57,6 +69,43 @@ describe("QuickTodoInput", () => {
       await waitFor(() => expect(input).toHaveValue(""));
     },
   );
+
+  it("adds the selected existing tag and keeps it selected after success", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue(jsonResponse({ id: 1 }, 201));
+    renderWithQueryClient(
+      <QuickTodoInput tags={[makeTag(), makeTag({ id: 2, name: "急ぎ" })]} />,
+    );
+
+    const tagSelect = screen.getByLabelText("追加時のタグ");
+    const addButton = screen.getByRole("button", { name: "追加" });
+    expect(
+      screen.getByLabelText("クイック追加").compareDocumentPosition(tagSelect) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      tagSelect.compareDocumentPosition(addButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(tagSelect).toHaveValue("");
+    await user.selectOptions(tagSelect, "1");
+    expect(tagSelect).toHaveValue("1");
+
+    await user.type(screen.getByLabelText("クイック追加"), "タグ付きTODO");
+    await user.click(screen.getByRole("button", { name: "追加" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/todos",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ title: "タグ付きTODO", tagIds: [1] }),
+        }),
+      );
+    });
+    await waitFor(() => expect(tagSelect).toHaveValue("1"));
+    expect(screen.getByLabelText("クイック追加")).toHaveValue("");
+  });
 
   it.each([
     ["", "タイトルは1〜200文字で入力してください"],
