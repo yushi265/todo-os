@@ -367,18 +367,27 @@ function TodoListPage() {
                 }
               />
             </div>
-            <Button
-              variant="outline"
-              aria-label="メニュー"
-              title="メニュー"
-              aria-haspopup="dialog"
-              aria-expanded={isMenuOpen}
-              aria-controls="todo-menu"
-              onClick={() => setIsMenuOpen(true)}
-              className="min-h-11 min-w-11 shrink-0 p-0 text-lg leading-none"
-            >
-              <span aria-hidden="true">☰</span>
-            </Button>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setModalState({ type: "create" })}
+                className="hidden font-bold sm:inline-block sm:text-xs"
+              >
+                + 追加
+              </Button>
+              <Button
+                variant="outline"
+                aria-label="メニュー"
+                title="メニュー"
+                aria-haspopup="dialog"
+                aria-expanded={isMenuOpen}
+                aria-controls="todo-menu"
+                onClick={() => setIsMenuOpen(true)}
+                className="min-h-11 min-w-11 shrink-0 p-0 text-lg leading-none"
+              >
+                <span aria-hidden="true">☰</span>
+              </Button>
+            </div>
           </div>
 
           <div className="mb-5 space-y-3 sm:mb-6 sm:space-y-4">

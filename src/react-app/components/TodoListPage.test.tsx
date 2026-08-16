@@ -46,8 +46,8 @@ afterEach(() => {
 });
 
 describe("TodoListPage", () => {
-  // [代表値] クイック追加があるため、モバイル用FABだけを残しヘッダー追加ボタンは表示しない
-  it("keeps the mobile add FAB without rendering a duplicate header add button", async () => {
+  // [代表値] モバイル用FABとsm以上用の通常追加ボタンを表示する
+  it("keeps both responsive entry points for creating a todo", async () => {
     fetchMock.mockResolvedValue(jsonResponse([]));
 
     renderWithQueryClient(<TodoListPage />);
@@ -62,9 +62,18 @@ describe("TodoListPage", () => {
       "font-bold",
       "sm:hidden",
     );
+    const headerAddButton = screen.getByRole("button", { name: "+ 追加" });
+    expect(headerAddButton).toHaveClass(
+      "hidden",
+      "sm:inline-block",
+      "font-bold",
+    );
+
+    const user = userEvent.setup();
+    await user.click(headerAddButton);
     expect(
-      screen.queryByRole("button", { name: "+ 追加" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("dialog", { name: "TODOを作成" }),
+    ).toBeInTheDocument();
 
     const menuButton = screen.getByRole("button", { name: "メニュー" });
     expect(menuButton).not.toHaveTextContent("メニュー");

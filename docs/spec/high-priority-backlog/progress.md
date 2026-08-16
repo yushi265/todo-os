@@ -39,3 +39,4 @@
 - 2026-08-16 UI refinement: タグ絞り込みの選択状態を`localStorage`へ保存し、再マウント後に復元。「すべて」で保存値を削除 / 触った: `TodoListPage.tsx`, `TodoListPage.test.tsx` と仕様書 / next: 完了
 - 2026-08-16 UI refinement: クイック追加成功時にタイトルだけをクリアし、選択中タグを維持 / 触った: `QuickTodoInput.tsx`, `QuickTodoInput.test.tsx` と仕様書 / next: 完了
 - 2026-08-16 UI refinement: 検索・フィルター表示を完了表示と同じスイッチ型に変更し、メニュー画面へ配置 / 触った: `TodoMenu.tsx`, `TodoListPage.tsx` と各テスト・仕様書 / next: 完了
+- 2026-08-16 UI refinement: PC向けの通常追加ボタンを一覧上部へ復元し、詳細入力モーダルを開けるように変更 / 触った: `TodoListPage.tsx`, `TodoListPage.test.tsx` と仕様書 / next: 完了
