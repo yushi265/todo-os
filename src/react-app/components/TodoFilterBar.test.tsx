@@ -84,6 +84,13 @@ function todoRequestUrls(fetchMock: ReturnType<typeof vi.fn>): string[] {
     .filter((url) => url.startsWith("/api/todos"));
 }
 
+async function openFilterPanel(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole("button", { name: "メニュー" }));
+  await user.click(
+    await screen.findByRole("checkbox", { name: "検索・フィルターを表示" }),
+  );
+}
+
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
@@ -120,7 +127,12 @@ describe("TodoFilterBar", () => {
       "sm:text-xs",
       "sm:py-1.5",
     );
-    expect(filterBar).toHaveClass("gap-2", "sm:gap-1.5");
+    expect(filterBar).toHaveClass(
+      "flex-col",
+      "gap-3",
+      "sm:flex-row",
+      "sm:gap-2",
+    );
 
     const addFilterButton = screen.getByRole("button", {
       name: "フィルターを追加",
@@ -186,6 +198,7 @@ describe("TodoFilterBar", () => {
 
     renderWithQueryClient(<TodoListPage />);
 
+    await openFilterPanel(user);
     await user.type(
       await screen.findByRole("searchbox", { name: "TODOを検索" }),
       "alpha",
@@ -208,6 +221,7 @@ describe("TodoFilterBar", () => {
 
     renderWithQueryClient(<TodoListPage />);
 
+    await openFilterPanel(user);
     await user.click(
       await screen.findByRole("button", { name: "フィルターを追加" }),
     );
@@ -232,6 +246,7 @@ describe("TodoFilterBar", () => {
 
     renderWithQueryClient(<TodoListPage />);
 
+    await openFilterPanel(user);
     await user.click(
       await screen.findByRole("button", { name: "フィルターを追加" }),
     );
@@ -321,6 +336,7 @@ describe("TodoFilterBar", () => {
 
     renderWithQueryClient(<TodoListPage />);
 
+    await openFilterPanel(user);
     await user.selectOptions(await screen.findByLabelText("並び順"), "dueDate");
     await user.click(screen.getByRole("button", { name: "降順に切り替え" }));
 
@@ -344,6 +360,7 @@ describe("TodoFilterBar", () => {
       await screen.findByText("TODO はまだありません"),
     ).toBeInTheDocument();
 
+    await openFilterPanel(user);
     await user.click(screen.getByRole("button", { name: "フィルターを追加" }));
     await user.click(screen.getByRole("menuitem", { name: "ステータス" }));
     await user.click(screen.getByRole("menuitem", { name: "完了" }));
@@ -369,6 +386,7 @@ describe("TodoFilterBar", () => {
 
     renderWithQueryClient(<TodoListPage />);
 
+    await openFilterPanel(user);
     await user.click(
       await screen.findByRole("button", { name: "フィルターを追加" }),
     );

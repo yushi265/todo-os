@@ -179,9 +179,9 @@ function TodoFilterBar({
   return (
     <section
       aria-label="TODOの検索・フィルター・ソート"
-      className="mb-4 flex flex-wrap items-center gap-2 sm:gap-1.5"
+      className="mb-0 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
     >
-      <div className="relative min-w-0 flex-1">
+      <div className="relative min-w-0 w-full sm:flex-1">
         <svg
           aria-hidden="true"
           viewBox="0 0 16 16"
@@ -215,7 +215,7 @@ function TodoFilterBar({
         />
       </div>
 
-      <div className="relative flex flex-wrap items-center gap-2">
+      <div className="relative flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
         {selectedChips.map((attribute) => {
           const value = filters[attribute];
           return (
@@ -328,7 +328,7 @@ function TodoFilterBar({
         )}
       </div>
 
-      <div className="flex min-h-11 items-center gap-2 sm:ml-auto">
+      <div className="flex min-h-11 w-full items-center justify-between gap-2 sm:ml-auto sm:w-auto sm:justify-start">
         <label
           htmlFor="todo-sort"
           className="text-sm text-text-quaternary sm:text-xs"

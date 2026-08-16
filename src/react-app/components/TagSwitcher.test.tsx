@@ -30,8 +30,9 @@ describe("TagSwitcher", () => {
     );
 
     expect(
-      screen.getByRole("navigation", { name: "タグで切り替え" }),
+      screen.getByRole("navigation", { name: "一覧をタグで絞り込む" }),
     ).toBeInTheDocument();
+    expect(screen.getByText("一覧を絞り込む:")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "すべて" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -58,10 +59,9 @@ describe("TagSwitcher", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "#私用" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    const selectedTag = screen.getByRole("button", { name: "#私用" });
+    expect(selectedTag).toHaveAttribute("aria-pressed", "true");
+    expect(selectedTag).toHaveClass("bg-primary", "text-white");
     await user.click(screen.getByRole("button", { name: "#仕事" }));
     expect(onTagChange).toHaveBeenCalledWith(1);
     await user.click(screen.getByRole("button", { name: "すべて" }));
@@ -74,7 +74,7 @@ describe("TagSwitcher", () => {
     );
 
     expect(
-      screen.queryByRole("navigation", { name: "タグで切り替え" }),
+      screen.queryByRole("navigation", { name: "一覧をタグで絞り込む" }),
     ).not.toBeInTheDocument();
   });
 });

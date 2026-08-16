@@ -15,13 +15,13 @@ function TagSwitcher({ tags, selectedTagId, onTagChange }: TagSwitcherProps) {
   if (tags.length === 0) return null;
 
   return (
-    <nav aria-label="タグで切り替え" className="mb-3 flex items-center gap-2">
-      <span className="shrink-0 text-sm text-text-quaternary sm:text-xs">
-        タグ
+    <nav aria-label="一覧をタグで絞り込む" className="flex items-center gap-2">
+      <span className="shrink-0 text-sm font-medium text-text-secondary sm:text-xs">
+        一覧を絞り込む:
       </span>
       <div className="flex min-w-0 gap-1.5 overflow-x-auto pb-1">
         <Button
-          variant={selectedTagId === null ? "secondary" : "ghost"}
+          variant={selectedTagId === null ? "default" : "ghost"}
           size="sm"
           type="button"
           aria-pressed={selectedTagId === null}
@@ -32,7 +32,7 @@ function TagSwitcher({ tags, selectedTagId, onTagChange }: TagSwitcherProps) {
         </Button>
         {tags.map((tag) => (
           <Button
-            variant={selectedTagId === tag.id ? "secondary" : "ghost"}
+            variant={selectedTagId === tag.id ? "default" : "ghost"}
             size="sm"
             type="button"
             key={tag.id}

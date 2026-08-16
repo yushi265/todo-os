@@ -60,6 +60,13 @@ describe("default theme color tokens", () => {
   });
 });
 
+describe("motion contracts", () => {
+  it("defines the menu slide-in animation", () => {
+    expect(stylesheet).toContain("@keyframes menu-slide-in");
+    expect(stylesheet).toContain("transform: translateX(100%);");
+  });
+});
+
 function parseColorTokens(block: string): Record<string, string> {
   return Object.fromEntries(
     [...block.matchAll(/--color-([\w-]+):\s*(#[0-9a-fA-F]{6})/g)].map(

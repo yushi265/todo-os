@@ -15,6 +15,7 @@ function CompletedToggle({ checked, onChange }: CompletedToggleProps) {
           <input
             id="show-completed-toggle"
             type="checkbox"
+            aria-label="完了・キャンセル済みを表示"
             checked={checked}
             onChange={(e) => onChange(e.target.checked)}
             className="peer sr-only"
@@ -29,7 +30,8 @@ function CompletedToggle({ checked, onChange }: CompletedToggleProps) {
           />
         </span>
       </span>
-      完了・キャンセル済みを表示
+      <span className="sm:hidden">完了を表示</span>
+      <span className="hidden sm:inline">完了・キャンセル済みを表示</span>
     </label>
   );
 }

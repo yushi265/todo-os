@@ -15,7 +15,6 @@ import type { SortBy, TodoFilters } from "../hooks/useTodos";
 import { useTags } from "../hooks/useTags";
 import { nextStatus } from "../lib/statusStyles";
 import { buildFullReorderedIds } from "../lib/reorder";
-import CompletedToggle from "./CompletedToggle";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import TagManagementModal from "./TagManagementModal";
 import TagSwitcher from "./TagSwitcher";
@@ -24,6 +23,7 @@ import QuickTodoInput from "./QuickTodoInput";
 import TodoFilterBar from "./TodoFilterBar";
 import TodoFormModal from "./TodoFormModal";
 import TodoList from "./TodoList";
+import TodoMenu from "./TodoMenu";
 import Button from "./ui/button";
 
 type ModalState =
@@ -51,6 +51,19 @@ interface ToastState {
 }
 
 const TOAST_DURATION_MS = 5000;
+export const TAG_FILTER_STORAGE_KEY = "todo-os-tag-filter";
+
+function readStoredTagFilter(): number | null {
+  try {
+    const stored = window.localStorage.getItem(TAG_FILTER_STORAGE_KEY);
+    if (stored === null) return null;
+
+    const tagId = Number(stored);
+    return Number.isInteger(tagId) && tagId > 0 ? tagId : null;
+  } catch {
+    return null;
+  }
+}
 
 function todoToUpdateInput(todo: TodoResponse): UpdateTodoInput {
   return {
@@ -103,7 +116,7 @@ function TodoListPage() {
   const [filters, setFilters] = useState<TodoFilters>({
     status: null,
     priority: null,
-    tagId: null,
+    tagId: readStoredTagFilter(),
     due: null,
   });
   const [sortBy, setSortBy] = useState<SortBy>("manual");
@@ -123,6 +136,8 @@ function TodoListPage() {
   const { theme, setTheme } = useTheme();
   const [modalState, setModalState] = useState<ModalState>(null);
   const [deleteTarget, setDeleteTarget] = useState<TodoResponse | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isFilterBarOpen, setIsFilterBarOpen] = useState(false);
   const [isTagManagementOpen, setIsTagManagementOpen] = useState(false);
   const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -132,6 +147,21 @@ function TodoListPage() {
     const timerId = window.setTimeout(() => setToast(null), TOAST_DURATION_MS);
     return () => window.clearTimeout(timerId);
   }, [toast]);
+
+  useEffect(() => {
+    try {
+      if (filters.tagId === null) {
+        window.localStorage.removeItem(TAG_FILTER_STORAGE_KEY);
+      } else {
+        window.localStorage.setItem(
+          TAG_FILTER_STORAGE_KEY,
+          String(filters.tagId),
+        );
+      }
+    } catch {
+      // private browsingなどで保存できなくても、現在の画面上の選択は維持する。
+    }
+  }, [filters.tagId]);
 
   const deleteMutation = useDeleteTodo();
   const advanceStatusMutation = useUpdateTodo();
@@ -149,11 +179,6 @@ function TodoListPage() {
         ? data
         : orderTodosByIds(data, optimisticOrderIds)
       : data;
-  const activeCount =
-    displayedTodos?.filter(
-      (todo) => todo.status === "TODO" || todo.status === "IN_PROGRESS",
-    ).length ?? 0;
-
   function handleNotFound() {
     setToast({ message: "対象の TODO が見つかりませんでした" });
     setModalState(null);
@@ -331,74 +356,52 @@ function TodoListPage() {
         メインコンテンツへ移動
       </a>
       <div className="mx-auto max-w-3xl p-4">
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="inline-block h-3 w-3 shrink-0 rounded bg-primary"
-            />
-            <h1
-              id="page-title"
-              className="text-xl font-bold text-text-primary sm:text-2xl"
-            >
-              todo-os
-            </h1>
-            <span className="text-xs font-medium text-text-tertiary">
-              残り{activeCount}件
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-4">
+        <main id="main-content" tabIndex={-1} aria-label="TODO一覧">
+          <div className="mb-3 flex min-w-0 items-center gap-3 sm:mb-4">
+            <div className="min-w-0 flex-1">
+              <TagSwitcher
+                tags={tags}
+                selectedTagId={filters.tagId}
+                onTagChange={(tagId) =>
+                  setFilters((current) => ({ ...current, tagId }))
+                }
+              />
+            </div>
             <Button
               variant="outline"
-              onClick={() => setIsThemeSettingsOpen(true)}
-              className="font-normal sm:px-3 sm:py-1.5 sm:text-xs"
+              aria-label="メニュー"
+              title="メニュー"
+              aria-haspopup="dialog"
+              aria-expanded={isMenuOpen}
+              aria-controls="todo-menu"
+              onClick={() => setIsMenuOpen(true)}
+              className="min-h-11 min-w-11 shrink-0 p-0 text-lg leading-none"
             >
-              設定
-            </Button>
-            <CompletedToggle
-              checked={showCompleted}
-              onChange={setShowCompleted}
-            />
-            <Button
-              variant="outline"
-              onClick={() => setIsTagManagementOpen(true)}
-              className="font-normal sm:px-3 sm:py-1.5 sm:text-xs"
-            >
-              タグ管理
-            </Button>
-            <Button
-              onClick={() => setModalState({ type: "create" })}
-              className="hidden font-bold sm:text-xs sm:inline-block"
-            >
-              + 追加
+              <span aria-hidden="true">☰</span>
             </Button>
           </div>
-        </header>
 
-        <main id="main-content" tabIndex={-1} aria-labelledby="page-title">
-          <QuickTodoInput />
+          <div className="mb-5 space-y-3 sm:mb-6 sm:space-y-4">
+            <QuickTodoInput tags={tags} />
 
-          <TagSwitcher
-            tags={tags}
-            selectedTagId={filters.tagId}
-            onTagChange={(tagId) =>
-              setFilters((current) => ({ ...current, tagId }))
-            }
-          />
-
-          <TodoFilterBar
-            search={search}
-            onSearchChange={setSearch}
-            filters={filters}
-            onFiltersChange={setFilters}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSortChange={(nextSortBy, nextSortOrder) => {
-              setSortBy(nextSortBy);
-              setSortOrder(nextSortOrder);
-            }}
-            tags={tags}
-          />
+            {isFilterBarOpen && (
+              <div id="todo-filter-panel" className="pt-2 sm:pt-3">
+                <TodoFilterBar
+                  search={search}
+                  onSearchChange={setSearch}
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                  onSortChange={(nextSortBy, nextSortOrder) => {
+                    setSortBy(nextSortBy);
+                    setSortOrder(nextSortOrder);
+                  }}
+                  tags={tags}
+                />
+              </div>
+            )}
+          </div>
 
           {isLoading && (
             <p role="status" className="py-10 text-center text-text-tertiary">
@@ -457,6 +460,24 @@ function TodoListPage() {
             )}
         </main>
       </div>
+
+      {isMenuOpen && (
+        <TodoMenu
+          showCompleted={showCompleted}
+          onShowCompletedChange={setShowCompleted}
+          isFilterBarOpen={isFilterBarOpen}
+          onFilterBarOpenChange={setIsFilterBarOpen}
+          onSettingsClick={() => {
+            setIsMenuOpen(false);
+            setIsThemeSettingsOpen(true);
+          }}
+          onTagManagementClick={() => {
+            setIsMenuOpen(false);
+            setIsTagManagementOpen(true);
+          }}
+          onClose={() => setIsMenuOpen(false)}
+        />
+      )}
 
       <Button
         size="icon"

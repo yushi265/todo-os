@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
-import TodoListPage from "./TodoListPage";
+import TodoListPage, { TAG_FILTER_STORAGE_KEY } from "./TodoListPage";
 import { jsonResponse, renderWithQueryClient } from "../test-utils";
 import type { TodoResponse } from "../../shared/types";
 
@@ -46,14 +46,13 @@ afterEach(() => {
 });
 
 describe("TodoListPage", () => {
-  // [代表値] AC-3: モバイル用 FAB と sm 以上用ヘッダーボタンをレスポンシブクラスで排他表示する
-  it("uses a mobile FAB and keeps the header add button for sm and wider", async () => {
+  // [代表値] クイック追加があるため、モバイル用FABだけを残しヘッダー追加ボタンは表示しない
+  it("keeps the mobile add FAB without rendering a duplicate header add button", async () => {
     fetchMock.mockResolvedValue(jsonResponse([]));
 
     renderWithQueryClient(<TodoListPage />);
 
     const fab = await screen.findByRole("button", { name: "TODOを追加" });
-    const headerButton = screen.getByRole("button", { name: "+ 追加" });
 
     expect(fab).toHaveClass(
       "fixed",
@@ -63,38 +62,29 @@ describe("TodoListPage", () => {
       "font-bold",
       "sm:hidden",
     );
-    expect(headerButton).toHaveClass(
-      "hidden",
-      "sm:inline-block",
-      "font-bold",
-      "text-sm",
-      "sm:text-xs",
-    );
+    expect(
+      screen.queryByRole("button", { name: "+ 追加" }),
+    ).not.toBeInTheDocument();
+
+    const menuButton = screen.getByRole("button", { name: "メニュー" });
+    expect(menuButton).not.toHaveTextContent("メニュー");
+    expect(menuButton).toHaveAttribute("title", "メニュー");
   });
 
-  // [代表値] AC-1: ヘッダーに色付きロゴアイコンを表示する
-  it("renders the colored logo icon in the header", async () => {
+  // [代表値] ブランド表示とヘッダー枠を削除する
+  it("does not render the branding header", async () => {
     fetchMock.mockResolvedValue(jsonResponse([]));
 
     renderWithQueryClient(<TodoListPage />);
 
-    const logo = (screen.getByRole("banner") as HTMLElement).querySelector(
-      'span[aria-hidden="true"].bg-primary',
-    );
-
-    expect(logo).toBeInTheDocument();
-    expect(logo).toHaveClass(
-      "inline-block",
-      "h-3",
-      "w-3",
-      "shrink-0",
-      "rounded",
-      "bg-primary",
-    );
+    expect(screen.queryByRole("banner")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "todo-os" }),
+    ).not.toBeInTheDocument();
   });
 
-  // [代表値] AC-1: 表示中の TODO/IN_PROGRESS の件数をヘッダーに表示する
-  it("shows the remaining count for displayed active todos", async () => {
+  // [代表値] 高優先度UI整理: ヘッダーから残り件数を削除する
+  it("does not show a remaining count in the header", async () => {
     fetchMock.mockResolvedValue(
       jsonResponse([
         makeTodo({ id: 1, status: "TODO" }),
@@ -106,21 +96,111 @@ describe("TodoListPage", () => {
 
     renderWithQueryClient(<TodoListPage />);
 
-    expect(await screen.findByText("残り2件")).toBeInTheDocument();
+    await screen.findAllByText("サンプルタスク");
+    expect(screen.queryByText(/残り\d+件/)).not.toBeInTheDocument();
   });
 
-  // [境界値] AC-1: 表示中にアクティブ TODO がない場合は0件と表示する
-  it("shows zero remaining todos when displayed todos are all inactive", async () => {
-    fetchMock.mockResolvedValue(
-      jsonResponse([
-        makeTodo({ id: 1, status: "DONE" }),
-        makeTodo({ id: 2, status: "CANCELED" }),
-      ]),
+  it("groups settings and display controls in a menu panel", async () => {
+    fetchMock.mockResolvedValue(jsonResponse([]));
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<TodoListPage />);
+
+    expect(
+      screen.queryByRole("dialog", { name: "メニュー" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "メニュー" }));
+
+    const menu = screen.getByRole("dialog", { name: "メニュー" });
+    expect(
+      within(menu).getByRole("button", { name: "設定" }),
+    ).toBeInTheDocument();
+    expect(
+      within(menu).getByRole("checkbox", {
+        name: "完了・キャンセル済みを表示",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(menu).getByRole("button", { name: "タグ管理" }),
+    ).toBeInTheDocument();
+    expect(
+      within(menu).getByRole("checkbox", { name: "検索・フィルターを表示" }),
+    ).toHaveAttribute("aria-expanded", "false");
+
+    await user.keyboard("{Escape}");
+    expect(
+      screen.queryByRole("dialog", { name: "メニュー" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("places the tag filter above the quick-add form", async () => {
+    const workTag = {
+      id: 1,
+      name: "仕事",
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+    };
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(jsonResponse(url === "/api/tags" ? [workTag] : [])),
     );
 
     renderWithQueryClient(<TodoListPage />);
 
-    expect(await screen.findByText("残り0件")).toBeInTheDocument();
+    const tagSwitcher = await screen.findByRole("navigation", {
+      name: "一覧をタグで絞り込む",
+    });
+    const quickAddForm = screen.getByRole("form", {
+      name: "TODOのクイック追加フォーム",
+    });
+    expect(
+      tagSwitcher.compareDocumentPosition(quickAddForm) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(tagSwitcher.parentElement?.parentElement).toContainElement(
+      screen.getByRole("button", { name: "メニュー" }),
+    );
+  });
+
+  it("persists the selected tag filter and restores it after remounting", async () => {
+    const workTag = {
+      id: 1,
+      name: "仕事",
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+    };
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(
+        jsonResponse(url === "/api/tags" ? [workTag] : [makeTodo()]),
+      ),
+    );
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<TodoListPage />);
+    const switcher = await screen.findByRole("navigation", {
+      name: "一覧をタグで絞り込む",
+    });
+    await user.click(within(switcher).getByRole("button", { name: "#仕事" }));
+
+    await waitFor(() => {
+      expect(localStorage.getItem(TAG_FILTER_STORAGE_KEY)).toBe("1");
+    });
+
+    cleanup();
+    renderWithQueryClient(<TodoListPage />);
+    const restoredSwitcher = await screen.findByRole("navigation", {
+      name: "一覧をタグで絞り込む",
+    });
+    expect(
+      within(restoredSwitcher).getByRole("button", { name: "#仕事" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(
+      within(restoredSwitcher).getByRole("button", { name: "すべて" }),
+    );
+    await waitFor(() => {
+      expect(localStorage.getItem(TAG_FILTER_STORAGE_KEY)).toBeNull();
+    });
   });
 
   it("shows a loading indicator while the initial fetch is in flight", () => {
@@ -199,7 +279,7 @@ describe("TodoListPage", () => {
       name: "メインコンテンツへ移動",
     });
     expect(skipLink).toHaveAttribute("href", "#main-content");
-    expect(screen.getByRole("main", { name: "todo-os" })).toHaveAttribute(
+    expect(screen.getByRole("main", { name: "TODO一覧" })).toHaveAttribute(
       "id",
       "main-content",
     );
@@ -358,6 +438,7 @@ describe("TodoListPage", () => {
     const user = userEvent.setup();
 
     renderWithQueryClient(<TodoListPage />);
+    await user.click(await screen.findByRole("button", { name: "メニュー" }));
     const tagManagementButton = await screen.findByRole("button", {
       name: "タグ管理",
     });
@@ -369,12 +450,56 @@ describe("TodoListPage", () => {
       "sm:py-1.5",
       "sm:text-xs",
     );
+    expect(tagManagementButton).toHaveAttribute("aria-label", "タグ管理");
+    expect(tagManagementButton).toHaveClass("justify-start");
 
     await user.click(tagManagementButton);
 
     expect(
       screen.getByRole("dialog", { name: "タグ管理" }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps the search and controls in a mobile-friendly stacked layout", async () => {
+    fetchMock.mockResolvedValue(jsonResponse([]));
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<TodoListPage />);
+
+    expect(
+      screen.queryByRole("checkbox", { name: "検索・フィルターを表示" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", {
+        name: "TODOの検索・フィルター・ソート",
+      }),
+    ).not.toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "メニュー" }));
+    const menu = screen.getByRole("dialog", { name: "メニュー" });
+    const toggle = within(menu).getByRole("checkbox", {
+      name: "検索・フィルターを表示",
+    });
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
+    const filterBar = await screen.findByRole("region", {
+      name: "TODOの検索・フィルター・ソート",
+    });
+    expect(toggle).toBeChecked();
+    expect(filterBar.parentElement).toHaveClass("pt-2", "sm:pt-3");
+    expect(filterBar).toHaveClass("flex-col", "sm:flex-row");
+    expect(screen.getByLabelText("TODOを検索")).toHaveClass("w-full");
+    expect(screen.getByLabelText("並び順").parentElement).toHaveClass(
+      "w-full",
+      "sm:w-auto",
+    );
+
+    await user.click(toggle);
+    expect(
+      screen.queryByRole("region", {
+        name: "TODOの検索・フィルター・ソート",
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it("syncs the tag quick switcher with the existing single-tag filter", async () => {
@@ -411,12 +536,16 @@ describe("TodoListPage", () => {
     renderWithQueryClient(<TodoListPage />);
 
     const switcher = await screen.findByRole("navigation", {
-      name: "タグで切り替え",
+      name: "一覧をタグで絞り込む",
     });
     expect(
       within(switcher).getByRole("button", { name: "すべて" }),
     ).toHaveAttribute("aria-pressed", "true");
 
+    await user.click(screen.getByRole("button", { name: "メニュー" }));
+    await user.click(
+      screen.getByRole("checkbox", { name: "検索・フィルターを表示" }),
+    );
     await user.click(screen.getByRole("button", { name: "フィルターを追加" }));
     await user.click(screen.getByRole("menuitem", { name: "タグ" }));
     await user.click(screen.getByRole("menuitem", { name: "仕事" }));
@@ -446,6 +575,7 @@ describe("TodoListPage", () => {
     const user = userEvent.setup();
 
     renderWithQueryClient(<TodoListPage />);
+    await user.click(await screen.findByRole("button", { name: "メニュー" }));
     await user.click(await screen.findByRole("button", { name: "設定" }));
 
     expect(
@@ -779,6 +909,12 @@ describe("TodoListPage", () => {
       const user = userEvent.setup();
 
       renderWithQueryClient(<TodoListPage />);
+      await user.click(await screen.findByRole("button", { name: "メニュー" }));
+      await user.click(
+        await screen.findByRole("checkbox", {
+          name: "検索・フィルターを表示",
+        }),
+      );
       await user.selectOptions(await screen.findByLabelText("並び順"), sortBy);
 
       await waitFor(() => {
