@@ -4,6 +4,7 @@ import { STATUS_ICON, STATUS_ICON_CLASSES } from "../lib/statusStyles";
 import TagBadge from "./TagBadge";
 import TodoCardShell from "./TodoCardShell";
 import TodoDescriptionIndicator from "./TodoDescriptionIndicator";
+import TodoSubtaskProgress from "./TodoSubtaskProgress";
 
 interface CompletedTodoListItemProps {
   todo: TodoResponse;
@@ -45,6 +46,7 @@ function CompletedTodoListItem({
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-tertiary sm:text-xs">
           {todo.description?.trim() && <TodoDescriptionIndicator />}
           <span>{formatDateTimeInTokyo(todo.updatedAt)}</span>
+          <TodoSubtaskProgress subtasks={todo.subtasks} />
         </span>
         {todo.tags.length > 0 && (
           <span

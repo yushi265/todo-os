@@ -4,6 +4,7 @@ import { createTodoSchema, updateTodoSchema } from "../../shared/schemas";
 import type { TodoResponse, TodoStatus } from "../../shared/types";
 import { ApiError, useCreateTodo, useUpdateTodo } from "../hooks/useTodos";
 import TagMultiSelect from "./TagMultiSelect";
+import TodoSubtaskList from "./TodoSubtaskList";
 import Button from "./ui/button";
 import ModalFrame from "./ui/modal-frame";
 
@@ -292,6 +293,8 @@ function TodoFormModal({
         {fieldErrors.tagIds && (
           <p className="text-sm text-danger">{fieldErrors.tagIds}</p>
         )}
+
+        {isEdit && todo && <TodoSubtaskList todoId={todo.id} />}
 
         {isEdit && (
           <div className="flex flex-col gap-1">

@@ -8,6 +8,15 @@ export interface TagResponse {
   updatedAt: string;
 }
 
+export interface SubtaskResponse {
+  id: number;
+  todoId: number;
+  title: string;
+  completed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TodoResponse {
   id: number;
   title: string;
@@ -19,6 +28,7 @@ export interface TodoResponse {
   createdAt: string;
   updatedAt: string;
   tags: TagResponse[];
+  subtasks: SubtaskResponse[];
 }
 
 export interface ErrorResponse {

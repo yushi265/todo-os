@@ -3,7 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TodoFormModal from "./TodoFormModal";
 import { jsonResponse, renderWithQueryClient } from "../test-utils";
-import type { TagResponse, TodoResponse } from "../../shared/types";
+import type {
+  SubtaskResponse,
+  TagResponse,
+  TodoResponse,
+} from "../../shared/types";
 
 function makeTodo(overrides: Partial<TodoResponse> = {}): TodoResponse {
   return {
@@ -17,6 +21,7 @@ function makeTodo(overrides: Partial<TodoResponse> = {}): TodoResponse {
     createdAt: "2026-08-01T00:00:00.000Z",
     updatedAt: "2026-08-01T00:00:00.000Z",
     tags: [],
+    subtasks: [],
     ...overrides,
   };
 }
@@ -25,6 +30,20 @@ function makeTag(overrides: Partial<TagResponse> = {}): TagResponse {
   return {
     id: 1,
     name: "タグ1",
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function makeSubtask(
+  overrides: Partial<SubtaskResponse> = {},
+): SubtaskResponse {
+  return {
+    id: 7,
+    todoId: 42,
+    title: "子タスク",
+    completed: false,
     createdAt: "2026-08-01T00:00:00.000Z",
     updatedAt: "2026-08-01T00:00:00.000Z",
     ...overrides,
@@ -51,6 +70,9 @@ function mockFetch(makeTodoResponse: () => Response, tags: TagResponse[] = []) {
   fetchMock.mockImplementation((url: string) => {
     if (url === "/api/tags") {
       return Promise.resolve(jsonResponse(tags));
+    }
+    if (url.includes("/subtasks")) {
+      return Promise.resolve(jsonResponse([]));
     }
     return Promise.resolve(makeTodoResponse());
   });
@@ -567,5 +589,122 @@ describe("TodoFormModal", () => {
     expect(patchCall).toBeDefined();
     const body = JSON.parse((patchCall?.[1] as RequestInit).body as string);
     expect(body.status).toBe("DONE");
+  });
+
+  it("adds a subtask from the edit modal", async () => {
+    const user = userEvent.setup();
+    const todo = makeTodo();
+    const subtask = makeSubtask();
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (url === "/api/tags") return Promise.resolve(jsonResponse([]));
+      if (url === "/api/todos/42/subtasks") {
+        if (init?.method === "POST")
+          return Promise.resolve(jsonResponse(subtask, 201));
+        return Promise.resolve(jsonResponse([]));
+      }
+      return Promise.resolve(jsonResponse(todo));
+    });
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit
+        todo={todo}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("dialog").querySelectorAll("form")).toHaveLength(1);
+
+    const input = await screen.findByLabelText("サブタスクのタイトル");
+    await user.type(input, "子タスクを追加");
+    await user.click(screen.getByRole("button", { name: "サブタスクを追加" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/todos/42/subtasks",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ title: "子タスクを追加" }),
+        }),
+      );
+    });
+  });
+
+  it("toggles a subtask completion state", async () => {
+    const user = userEvent.setup();
+    const todo = makeTodo();
+    const subtask = makeSubtask();
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (url === "/api/tags") return Promise.resolve(jsonResponse([]));
+      if (url === "/api/todos/42/subtasks") {
+        if (init?.method === "PATCH") {
+          return Promise.resolve(jsonResponse({ ...subtask, completed: true }));
+        }
+        return Promise.resolve(jsonResponse([subtask]));
+      }
+      return Promise.resolve(jsonResponse(todo));
+    });
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit
+        todo={todo}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    await user.click(
+      await screen.findByRole("checkbox", {
+        name: "サブタスク「子タスク」を完了にする",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/todos/42/subtasks/7",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ completed: true }),
+        }),
+      );
+    });
+  });
+
+  it("deletes a subtask from the edit modal", async () => {
+    const user = userEvent.setup();
+    const todo = makeTodo();
+    const subtask = makeSubtask();
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (url === "/api/tags") return Promise.resolve(jsonResponse([]));
+      if (url === "/api/todos/42/subtasks") {
+        if (init?.method === "DELETE")
+          return Promise.resolve(jsonResponse(undefined, 204));
+        return Promise.resolve(jsonResponse([subtask]));
+      }
+      return Promise.resolve(jsonResponse(todo));
+    });
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit
+        todo={todo}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "サブタスク「子タスク」を削除",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/todos/42/subtasks/7", {
+        method: "DELETE",
+      });
+    });
   });
 });

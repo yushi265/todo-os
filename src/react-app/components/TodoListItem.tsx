@@ -16,6 +16,7 @@ import {
 import TagBadge from "./TagBadge";
 import TodoCardShell from "./TodoCardShell";
 import TodoDescriptionIndicator from "./TodoDescriptionIndicator";
+import TodoSubtaskProgress from "./TodoSubtaskProgress";
 import Button from "./ui/button";
 
 const DUE_DATE_STATUS_CLASSES: Record<Exclude<DueDateStatus, null>, string> = {
@@ -130,7 +131,8 @@ function TodoListItem({
         {(todo.description?.trim() ||
           todo.priority ||
           todo.dueDate ||
-          todo.tags.length > 0) && (
+          todo.tags.length > 0 ||
+          todo.subtasks.length > 0) && (
           <span className="flex w-full min-w-0 flex-nowrap items-center gap-x-2 overflow-x-auto text-sm text-text-secondary sm:gap-x-1.5 sm:text-xs">
             {todo.description?.trim() && <TodoDescriptionIndicator />}
             {todo.priority && (
@@ -172,6 +174,7 @@ function TodoListItem({
                 ))}
               </span>
             )}
+            <TodoSubtaskProgress subtasks={todo.subtasks} />
           </span>
         )}
       </div>

@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { env, exports } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
-import { tags, todos, todoTags } from "../db/schema";
-import type { ErrorResponse, TagResponse, TodoResponse } from "../shared/types";
+import { subtasks, tags, todos, todoTags } from "../db/schema";
+import type {
+  ErrorResponse,
+  SubtaskResponse,
+  TagResponse,
+  TodoResponse,
+} from "../shared/types";
 
 const BASE_URL = "https://example.com";
 
@@ -13,6 +18,7 @@ const BASE_URL = "https://example.com";
 // depend on the very cascade behavior that AC-3's tests independently verify.
 beforeEach(async () => {
   const db = drizzle(env.DB);
+  await db.delete(subtasks);
   await db.delete(todoTags);
   await db.delete(tags);
   await db.delete(todos);
@@ -68,6 +74,14 @@ async function createTodo(body: unknown): Promise<TodoResponse> {
 async function createTag(body: unknown): Promise<TagResponse> {
   const res = await call("POST", "/api/tags", body);
   return (await res.json()) as TagResponse;
+}
+
+async function createSubtask(
+  todoId: number,
+  body: unknown,
+): Promise<SubtaskResponse> {
+  const res = await call("POST", `/api/todos/${todoId}/subtasks`, body);
+  return (await res.json()) as SubtaskResponse;
 }
 
 describe("POST /api/todos", () => {
@@ -1121,6 +1135,143 @@ describe("DELETE /api/todos/:id", () => {
 
     const getRes = await call("GET", `/api/todos/${created.id}`);
     expect(getRes.status).toBe(404);
+  });
+});
+
+describe("/api/todos/:id/subtasks", () => {
+  it("creates subtasks and returns them in creation order", async () => {
+    const parent = await createTodo({ title: "parent" });
+    const first = await createSubtask(parent.id, { title: "first" });
+    const second = await createSubtask(parent.id, { title: "second" });
+
+    expect(first.todoId).toBe(parent.id);
+    expect(first.completed).toBe(false);
+
+    const listResponse = await call("GET", `/api/todos/${parent.id}/subtasks`);
+    expect(listResponse.status).toBe(200);
+    expect(
+      ((await listResponse.json()) as SubtaskResponse[]).map(
+        (subtask) => subtask.title,
+      ),
+    ).toEqual(["first", "second"]);
+
+    const todoResponse = await call("GET", `/api/todos/${parent.id}`);
+    const todo = (await todoResponse.json()) as TodoResponse;
+    expect(todo.subtasks.map((subtask) => subtask.id)).toEqual([
+      first.id,
+      second.id,
+    ]);
+  });
+
+  it.each(["", "a".repeat(201)])(
+    "rejects an invalid subtask title without creating a row",
+    async (title) => {
+      const parent = await createTodo({ title: "parent" });
+
+      const response = await call("POST", `/api/todos/${parent.id}/subtasks`, {
+        title,
+      });
+
+      expect(response.status).toBe(400);
+      const listResponse = await call(
+        "GET",
+        `/api/todos/${parent.id}/subtasks`,
+      );
+      expect(await listResponse.json()).toEqual([]);
+    },
+  );
+
+  it("updates completion", async () => {
+    const parent = await createTodo({ title: "parent" });
+    const subtask = await createSubtask(parent.id, { title: "before" });
+
+    const response = await call(
+      "PATCH",
+      `/api/todos/${parent.id}/subtasks/${subtask.id}`,
+      { completed: true },
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        id: subtask.id,
+        todoId: parent.id,
+        title: "before",
+        completed: true,
+      }),
+    );
+  });
+
+  it.each([{ completed: "true" }, {}])(
+    "rejects an invalid completion update: %j",
+    async (input) => {
+      const parent = await createTodo({ title: "parent" });
+      const subtask = await createSubtask(parent.id, { title: "child" });
+
+      const response = await call(
+        "PATCH",
+        `/api/todos/${parent.id}/subtasks/${subtask.id}`,
+        input,
+      );
+
+      expect(response.status).toBe(400);
+    },
+  );
+
+  it("deletes a subtask", async () => {
+    const parent = await createTodo({ title: "parent" });
+    const subtask = await createSubtask(parent.id, { title: "delete me" });
+
+    const response = await call(
+      "DELETE",
+      `/api/todos/${parent.id}/subtasks/${subtask.id}`,
+    );
+
+    expect(response.status).toBe(204);
+    const listResponse = await call("GET", `/api/todos/${parent.id}/subtasks`);
+    expect(await listResponse.json()).toEqual([]);
+  });
+
+  it("rejects a subtask operation when the parent relationship does not match", async () => {
+    const firstParent = await createTodo({ title: "first parent" });
+    const secondParent = await createTodo({ title: "second parent" });
+    const subtask = await createSubtask(firstParent.id, { title: "child" });
+
+    const response = await call(
+      "PATCH",
+      `/api/todos/${secondParent.id}/subtasks/${subtask.id}`,
+      { completed: true },
+    );
+
+    expect(response.status).toBe(404);
+    const body = (await response.json()) as ErrorResponse;
+    expect(body.error).toBe("Subtask not found");
+  });
+
+  it("returns 404 for a missing parent and missing subtask", async () => {
+    const missingParentResponse = await call(
+      "GET",
+      "/api/todos/999999/subtasks",
+    );
+    expect(missingParentResponse.status).toBe(404);
+
+    const parent = await createTodo({ title: "parent" });
+    const missingSubtaskResponse = await call(
+      "DELETE",
+      `/api/todos/${parent.id}/subtasks/999999`,
+    );
+    expect(missingSubtaskResponse.status).toBe(404);
+  });
+
+  it("cascades subtasks when the parent todo is deleted", async () => {
+    const parent = await createTodo({ title: "parent" });
+    await createSubtask(parent.id, { title: "child" });
+
+    const deleteResponse = await call("DELETE", `/api/todos/${parent.id}`);
+    expect(deleteResponse.status).toBe(204);
+
+    const db = drizzle(env.DB);
+    expect(await db.select().from(subtasks).all()).toEqual([]);
   });
 });
 

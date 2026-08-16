@@ -15,17 +15,20 @@ import {
   type SQL,
 } from "drizzle-orm";
 import type { SQLiteUpdateSetSource } from "drizzle-orm/sqlite-core";
-import { tags, todos, todoTags } from "../../db/schema";
+import { subtasks, tags, todos, todoTags } from "../../db/schema";
 import {
   createTodoSchema,
+  createSubtaskSchema,
   listTodosQuerySchema,
   reorderTodosSchema,
+  updateSubtaskSchema,
   updateTodoSchema,
   type ListTodosQuery,
 } from "../../shared/schemas";
 import type {
   ErrorResponse,
   TagResponse,
+  SubtaskResponse,
   TodoResponse,
 } from "../../shared/types";
 import { parseJsonBody } from "../request";
@@ -34,6 +37,19 @@ const todosRoute = new Hono<{ Bindings: Env }>();
 
 async function findTodoById(db: DrizzleD1Database, id: number) {
   const [found] = await db.select().from(todos).where(eq(todos.id, id)).all();
+  return found;
+}
+
+async function findSubtaskById(
+  db: DrizzleD1Database,
+  todoId: number,
+  subtaskId: number,
+) {
+  const [found] = await db
+    .select()
+    .from(subtasks)
+    .where(and(eq(subtasks.todoId, todoId), eq(subtasks.id, subtaskId)))
+    .all();
   return found;
 }
 
@@ -92,8 +108,8 @@ async function findTagsByIds(
  * 対象 todo が複数でも一括 JOIN 1 回で解決する（N+1 回避）。 */
 async function attachTags(
   db: DrizzleD1Database,
-  todoRows: Omit<TodoResponse, "tags">[],
-): Promise<TodoResponse[]> {
+  todoRows: Omit<TodoResponse, "tags" | "subtasks">[],
+): Promise<Omit<TodoResponse, "subtasks">[]> {
   if (todoRows.length === 0) return [];
 
   const todoIds = todoRows.map((todo) => todo.id);
@@ -119,6 +135,45 @@ async function attachTags(
     ...todo,
     tags: tagsByTodoId.get(todo.id) ?? [],
   }));
+}
+
+/** 複数 TODO のサブタスクを一括取得して親 TODO ごとに付与する（N+1 回避）。 */
+async function attachSubtasks(
+  db: DrizzleD1Database,
+  todoRows: Omit<TodoResponse, "subtasks">[],
+): Promise<TodoResponse[]> {
+  if (todoRows.length === 0) return [];
+
+  const todoIds = todoRows.map((todo) => todo.id);
+  const subtaskRows = await db
+    .select()
+    .from(subtasks)
+    .where(inArray(subtasks.todoId, todoIds))
+    .orderBy(asc(subtasks.id))
+    .all();
+
+  const subtasksByTodoId = new Map<number, SubtaskResponse[]>();
+  for (const subtask of subtaskRows) {
+    const list = subtasksByTodoId.get(subtask.todoId);
+    if (list) {
+      list.push(subtask);
+    } else {
+      subtasksByTodoId.set(subtask.todoId, [subtask]);
+    }
+  }
+
+  return todoRows.map((todo) => ({
+    ...todo,
+    subtasks: subtasksByTodoId.get(todo.id) ?? [],
+  }));
+}
+
+async function attachRelations(
+  db: DrizzleD1Database,
+  todoRows: Omit<TodoResponse, "tags" | "subtasks">[],
+): Promise<TodoResponse[]> {
+  const withTags = await attachTags(db, todoRows);
+  return attachSubtasks(db, withTags);
 }
 
 todosRoute.get("/", async (c) => {
@@ -171,8 +226,8 @@ todosRoute.get("/", async (c) => {
   if (conditions.length > 0) query = query.where(and(...conditions));
   query = query.orderBy(...buildOrderBy(sortBy, sortOrder));
   const result = await query.all();
-  const withTags = await attachTags(db, result);
-  return c.json(withTags satisfies TodoResponse[]);
+  const withRelations = await attachRelations(db, result);
+  return c.json(withRelations satisfies TodoResponse[]);
 });
 
 todosRoute.post("/", async (c) => {
@@ -225,8 +280,113 @@ todosRoute.post("/", async (c) => {
       .values(tagIds.map((tagId) => ({ todoId: created.id, tagId })));
   }
 
-  const [withTags] = await attachTags(db, [created]);
-  return c.json(withTags satisfies TodoResponse, 201);
+  const [withRelations] = await attachRelations(db, [created]);
+  return c.json(withRelations satisfies TodoResponse, 201);
+});
+
+todosRoute.get("/:id/subtasks", async (c) => {
+  const todoId = Number(c.req.param("id"));
+  const db = drizzle(c.env.DB);
+  const parent = await findTodoById(db, todoId);
+  if (!parent) {
+    return c.json({ error: "Todo not found" } satisfies ErrorResponse, 404);
+  }
+
+  const result = await db
+    .select()
+    .from(subtasks)
+    .where(eq(subtasks.todoId, todoId))
+    .orderBy(asc(subtasks.id))
+    .all();
+  return c.json(result satisfies SubtaskResponse[]);
+});
+
+todosRoute.post("/:id/subtasks", async (c) => {
+  const todoId = Number(c.req.param("id"));
+  const body = await parseJsonBody(c.req.raw);
+  if (!body.ok) {
+    return c.json({ error: "Invalid JSON" } satisfies ErrorResponse, 400);
+  }
+  const parsed = createSubtaskSchema.safeParse(body.data);
+  if (!parsed.success) {
+    return c.json(
+      {
+        error: "Validation failed",
+        details: parsed.error.issues,
+      } satisfies ErrorResponse,
+      400,
+    );
+  }
+
+  const db = drizzle(c.env.DB);
+  const parent = await findTodoById(db, todoId);
+  if (!parent) {
+    return c.json({ error: "Todo not found" } satisfies ErrorResponse, 404);
+  }
+
+  const [created] = await db
+    .insert(subtasks)
+    .values({ todoId, title: parsed.data.title })
+    .returning();
+  return c.json(created satisfies SubtaskResponse, 201);
+});
+
+todosRoute.patch("/:id/subtasks/:subtaskId", async (c) => {
+  const todoId = Number(c.req.param("id"));
+  const subtaskId = Number(c.req.param("subtaskId"));
+  const body = await parseJsonBody(c.req.raw);
+  if (!body.ok) {
+    return c.json({ error: "Invalid JSON" } satisfies ErrorResponse, 400);
+  }
+  const parsed = updateSubtaskSchema.safeParse(body.data);
+  if (!parsed.success) {
+    return c.json(
+      {
+        error: "Validation failed",
+        details: parsed.error.issues,
+      } satisfies ErrorResponse,
+      400,
+    );
+  }
+
+  const db = drizzle(c.env.DB);
+  const parent = await findTodoById(db, todoId);
+  if (!parent) {
+    return c.json({ error: "Todo not found" } satisfies ErrorResponse, 404);
+  }
+  const existing = await findSubtaskById(db, todoId, subtaskId);
+  if (!existing) {
+    return c.json({ error: "Subtask not found" } satisfies ErrorResponse, 404);
+  }
+
+  const updates: SQLiteUpdateSetSource<typeof subtasks> = {
+    updatedAt: sql`(current_timestamp)`,
+  };
+  updates.completed = parsed.data.completed;
+
+  const [updated] = await db
+    .update(subtasks)
+    .set(updates)
+    .where(eq(subtasks.id, subtaskId))
+    .returning();
+  return c.json(updated satisfies SubtaskResponse);
+});
+
+todosRoute.delete("/:id/subtasks/:subtaskId", async (c) => {
+  const todoId = Number(c.req.param("id"));
+  const subtaskId = Number(c.req.param("subtaskId"));
+  const db = drizzle(c.env.DB);
+  const parent = await findTodoById(db, todoId);
+  if (!parent) {
+    return c.json({ error: "Todo not found" } satisfies ErrorResponse, 404);
+  }
+  const existing = await findSubtaskById(db, todoId, subtaskId);
+  if (!existing) {
+    return c.json({ error: "Subtask not found" } satisfies ErrorResponse, 404);
+  }
+
+  await db.delete(subtasks).where(eq(subtasks.id, subtaskId));
+  return c.body(null, 204);
 });
 
 todosRoute.get("/:id", async (c) => {
@@ -236,8 +396,8 @@ todosRoute.get("/:id", async (c) => {
   if (!found) {
     return c.json({ error: "Todo not found" } satisfies ErrorResponse, 404);
   }
-  const [withTags] = await attachTags(db, [found]);
-  return c.json(withTags satisfies TodoResponse);
+  const [withRelations] = await attachRelations(db, [found]);
+  return c.json(withRelations satisfies TodoResponse);
 });
 
 todosRoute.patch("/reorder", async (c) => {
@@ -365,13 +525,13 @@ todosRoute.patch("/:id", async (c) => {
     if (!updated) {
       throw new Error(`Todo disappeared during update: ${id}`);
     }
-    const [withTags] = await attachTags(db, [updated]);
-    return c.json(withTags satisfies TodoResponse);
+    const [withRelations] = await attachRelations(db, [updated]);
+    return c.json(withRelations satisfies TodoResponse);
   }
 
   const [updated] = await updateStatement.returning();
-  const [withTags] = await attachTags(db, [updated]);
-  return c.json(withTags satisfies TodoResponse);
+  const [withRelations] = await attachRelations(db, [updated]);
+  return c.json(withRelations satisfies TodoResponse);
 });
 
 todosRoute.delete("/:id", async (c) => {

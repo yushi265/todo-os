@@ -26,6 +26,21 @@ export const todos = sqliteTable("todos", {
     .default(sql`(current_timestamp)`),
 });
 
+export const subtasks = sqliteTable("subtasks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  todoId: integer("todo_id")
+    .notNull()
+    .references(() => todos.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  completed: integer("completed", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
 export const tags = sqliteTable("tags", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull().unique(),

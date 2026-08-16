@@ -7,6 +7,16 @@ const uniqueTagIdsSchema = z
     message: "tagIds must not contain duplicate values",
   });
 
+const subtaskTitleSchema = z.string().min(1).max(200);
+
+export const createSubtaskSchema = z.object({
+  title: subtaskTitleSchema,
+});
+
+export const updateSubtaskSchema = z.object({
+  completed: z.boolean(),
+});
+
 export const createTodoSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().nullable().optional(),
@@ -51,6 +61,8 @@ export const updateTagSchema = z.object({
 
 export type CreateTodoInput = z.infer<typeof createTodoSchema>;
 export type UpdateTodoInput = z.infer<typeof updateTodoSchema>;
+export type CreateSubtaskInput = z.infer<typeof createSubtaskSchema>;
+export type UpdateSubtaskInput = z.infer<typeof updateSubtaskSchema>;
 export type ReorderTodosInput = z.infer<typeof reorderTodosSchema>;
 export type ListTodosQuery = z.infer<typeof listTodosQuerySchema>;
 export type CreateTagInput = z.infer<typeof createTagSchema>;

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   createTagSchema,
+  createSubtaskSchema,
   createTodoSchema,
   listTodosQuerySchema,
   reorderTodosSchema,
   updateTagSchema,
+  updateSubtaskSchema,
   updateTodoSchema,
 } from "./schemas";
 
@@ -152,6 +154,38 @@ describe("updateTodoSchema", () => {
       expect("description" in omitted.data).toBe(false);
       expect(explicitNull.data.description).toBeNull();
     }
+  });
+});
+
+describe("createSubtaskSchema", () => {
+  it.each([1, 200])("accepts a title with %s character(s)", (length) => {
+    expect(
+      createSubtaskSchema.safeParse({ title: "a".repeat(length) }).success,
+    ).toBe(true);
+  });
+
+  it.each([0, 201])("rejects a title with %s character(s)", (length) => {
+    expect(
+      createSubtaskSchema.safeParse({ title: "a".repeat(length) }).success,
+    ).toBe(false);
+  });
+});
+
+describe("updateSubtaskSchema", () => {
+  it("accepts a completed-only update", () => {
+    expect(updateSubtaskSchema.safeParse({ completed: true }).success).toBe(
+      true,
+    );
+  });
+
+  it("rejects a non-boolean completed value", () => {
+    expect(updateSubtaskSchema.safeParse({ completed: "true" }).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects an update without completed", () => {
+    expect(updateSubtaskSchema.safeParse({}).success).toBe(false);
   });
 });
 

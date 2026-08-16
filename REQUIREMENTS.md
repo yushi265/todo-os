@@ -129,6 +129,17 @@ TODOを削除できる。
 
 初期バージョンでは物理削除とし、削除後の復元手段は提供しない。個人用アプリでスコープが小さいため、確認ダイアログによる誤操作防止で十分と判断する。誤って削除したくない場合は、削除の代わりに `CANCELED` へのステータス変更を利用できる。
 
+### 4.4 サブタスク管理
+
+TODO編集画面で、親TODOに紐づくサブタスクを管理できる。
+
+- サブタスクの追加（タイトルのみ、1〜200文字）
+- サブタスクの完了／未完了の切り替え
+- サブタスクの削除
+- 親TODOの一覧カードへの完了数／総数表示
+
+サブタスクは1階層のみとし、通常のTODO一覧には独立した行として表示しない。親TODOを削除した場合、サブタスクも削除する。
+
 ---
 
 ## 5. ステータス管理
@@ -500,6 +511,21 @@ updated_at
 
 `sort_order` はTODOの手動表示順を保持する。
 
+### subtasks
+
+```text
+subtasks
+
+id
+todo_id
+title
+completed
+created_at
+updated_at
+```
+
+`todo_id` は `todos.id` への外部キーとし、`ON DELETE CASCADE` を設定する。サブタスクは `id` 昇順で表示する。
+
 ### tags
 
 ```text
@@ -535,6 +561,17 @@ GET    /api/todos/:id
 PATCH  /api/todos/:id
 DELETE /api/todos/:id
 ```
+
+### サブタスク
+
+```text
+GET    /api/todos/:id/subtasks
+POST   /api/todos/:id/subtasks
+PATCH  /api/todos/:id/subtasks/:subtaskId
+DELETE /api/todos/:id/subtasks/:subtaskId
+```
+
+追加は `{ "title": "サブタスク" }`、更新は `{ "completed": true }` を受け付ける。親TODOの取得レスポンスには `subtasks` 配列を含める。
 
 ### 並び替え
 
@@ -621,6 +658,7 @@ Drizzle ORMまたはPrepared Statementを利用する。
 - TODO作成
 - TODO編集
 - TODO削除
+- サブタスク管理
 - TODO一覧
 - ステータス管理
 - `CANCELED` ステータス

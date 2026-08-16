@@ -5,12 +5,14 @@
 - `GET /api/todos`・`POST /api/todos`・`GET/PATCH/DELETE /api/todos/:id`（参照: `src/worker/routes/todos.ts`）。`app.route("/api/todos", todosRoute)` で `src/worker/index.ts` にマウント。`POST`/`PATCH` は `tagIds?: number[]` を受け付け、レスポンスの `TodoResponse` は常に `tags: TagResponse[]` を含む。`GET /api/todos` はクエリパラメータ `status`/`priority`/`tagId`/`due`(`TODAY`/`OVERDUE`/`NONE`)/`q`/`sortBy`(`manual`/`dueDate`/`priority`/`createdAt`/`updatedAt`)/`sortOrder`(`asc`/`desc`) に対応（`listTodosQuerySchema`、`src/shared/schemas.ts`。filter-sort-search ユニットで追加）。
 - `PATCH /api/todos/reorder`（参照: `src/worker/routes/todos.ts`）: `{todoIds: number[]}`を受け取り、順序どおり`sortOrder`を0起点で一括更新（`db.batch()`）。成功時`204`。重複ID・全TODO集合との不一致（過不足）は`400`。**`todosRoute.patch("/reorder", ...)`は`todosRoute.patch("/:id", ...)`より前に登録する必要がある**（Honoはルート登録順で評価するため、後に登録すると`/reorder`が`:id="reorder"`として`/:id`ハンドラに誤ってマッチする。manual-reorder ユニットで追加）。
 - `GET /api/tags`・`POST /api/tags`・`PATCH/DELETE /api/tags/:id`（参照: `src/worker/routes/tags.ts`）。`app.route("/api/tags", tagsRoute)` で `src/worker/index.ts` にマウント。タグ名重複は `409`、存在しない `tagIds` の指定は `400`。
-- レスポンス型 `TodoResponse`・`TagResponse`・`ErrorResponse`、入力スキーマ `createTodoSchema`・`updateTodoSchema`・`createTagSchema`・`updateTagSchema`（参照: `src/shared/types.ts` / `src/shared/schemas.ts`）。service・ui 両レイヤーが import する共有契約（`docs/architecture.md` 参照）。
+- `GET/POST /api/todos/:id/subtasks`・`PATCH/DELETE /api/todos/:id/subtasks/:subtaskId`（参照: `src/worker/routes/todos.ts`）。`SubtaskResponse` は `id`/`todoId`/`title`/`completed`/`createdAt`/`updatedAt` を持ち、親 TODO のレスポンスには `subtasks` を含む。親子が一致しない操作は `404`。
+- レスポンス型 `TodoResponse`・`SubtaskResponse`・`TagResponse`・`ErrorResponse`、入力スキーマ `createTodoSchema`・`updateTodoSchema`・`createSubtaskSchema`・`updateSubtaskSchema`・`createTagSchema`・`updateTagSchema`（参照: `src/shared/types.ts` / `src/shared/schemas.ts`）。service・ui 両レイヤーが import する共有契約（`docs/architecture.md` 参照）。
 
 ## 主要データ構造
 
 - `todos` テーブル（id/title/description/status/priority/dueDate/sortOrder/createdAt/updatedAt。参照: `src/db/schema.ts`）。
 - `tags`（id/name〔UNIQUE〕/createdAt/updatedAt）・`todo_tags`（todoId+tagId 複合主キー、両方 `ON DELETE CASCADE`）。tag-management ユニットで実装済み。
+- `subtasks`（id/todoId/title/completed/createdAt/updatedAt。`todoId` → `todos.id`、`ON DELETE CASCADE`）。サブタスクは専用テーブルで、id昇順で取得する（参照: `src/db/schema.ts`、`drizzle/0001_aspiring_lady_deathstrike.sql`）。
 - `createdAt`/`updatedAt` は SQLite の `current_timestamp` 形式（`"YYYY-MM-DD HH:MM:SS"`・UTC・`'T'`区切りなし）。ISO 8601 ではない点に注意（消費側で厳密パースする場合は要変換）。
 
 ## 再利用可能な部品
@@ -25,11 +27,14 @@
 - `findTodoById(db, id)` / `findTagsByIds(db, tagIds)`（参照: `src/worker/routes/todos.ts`）: id 指定の 1 件取得・複数 id の存在確認+取得。GET/:id・PATCH・DELETE、`tagIds` の存在チェックで共通化。
 - `calculateNextSortOrder(maxSortOrder: number | null): number`（参照: 同上）: 新規行の sort_order 採番（既存最大値+1、0件なら0）。
 - `attachTags(db, todoRows)`（参照: 同上）: 複数 TODO に紐づくタグを 1 回の JOIN で一括取得しグルーピングして付与する（N+1 回避パターン）。一覧・単体取得・作成・更新のレスポンス構築で共通利用。
+- `attachSubtasks(db, todoRows)` / `attachRelations(db, todoRows)`（参照: `src/worker/routes/todos.ts`）: 親 TODO のサブタスクを一括取得してグルーピングし、タグとともに一覧・単体・作成・更新レスポンスへ付与する（N+1回避）。
 - PATCH の「未指定」と「明示 null（または空配列）」の区別は `"key" in parsed.data` で判定する（Zod の optional は未指定キーを省略するため区別可能。参照: 同上。`tagIds: []` は「全解除」の意味になる）。
 - `isUniqueConstraintError(error)`（参照: `src/worker/routes/tags.ts`）: D1 の UNIQUE 制約違反検出。下記「既知の罠」参照。
 - `isOverdue(dueDate, status, now?)`（参照: `src/react-app/lib/isOverdue.ts`）: 期限切れ判定。`Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" })` で "YYYY-MM-DD" 文字列を得て日付文字列比較する手法（タイムゾーン計算を自前実装しない）。
 - `renderWithQueryClient(ui)` / `jsonResponse(body, status?)`（参照: `src/react-app/test-utils.tsx`）: TanStack Query を使うコンポーネントのテストヘルパー。
 - `useTodos()` / `useCreateTodo()` / `useUpdateTodo()` / `useDeleteTodo()`（参照: `src/react-app/hooks/useTodos.ts`）: `ApiError` で service のエラー応答（400/404/500）をラップ。一覧クエリは `retry: false`（エラー即表示のため）。
+- `useSubtasks()` / `useCreateSubtask()` / `useUpdateSubtask()` / `useDeleteSubtask()`（参照: `src/react-app/hooks/useSubtasks.ts`）: 親IDを含む query key でサブタスクを管理し、成功時にサブタスクと TODO 一覧の両方を invalidate する。
+- `TodoSubtaskList` / `TodoSubtaskProgress`（参照: `src/react-app/components/`）: 編集モーダル内の追加・完了切替・削除UIと、TODO一覧カードの完了数/総数表示を担当する。
 - `useTags()` / `useCreateTag()` / `useUpdateTag()` / `useDeleteTag()` / `tagMutationErrorMessage(error)`（参照: `src/react-app/hooks/useTags.ts`）: `TagApiError` で 400/404/409 をラップ。`tagMutationErrorMessage` はエラーコード→表示文言変換の共通関数（`TagManagementModal`/`TagMultiSelect` 両方から参照）。`useDeleteTag` は成功時に `tags` と `todos` 両方のクエリキャッシュを invalidate する（タグ削除で TODO 側のタグバッジ表示も追従させるため）。
 - `useShowCompleted()`（参照: `src/react-app/hooks/useShowCompleted.ts`）: `localStorage` 連携の表示トグル状態。
 - `DeleteConfirmDialog`（参照: `src/react-app/components/DeleteConfirmDialog.tsx`）: 汎用の削除確認ダイアログ。`{title, message, onConfirm, onClose, isPending?}` を受け取る表示専用コンポーネント（mutation の呼び出し・エラー処理は呼び出し側が持つ）。`isPending` を渡さないと連打防止が効かないので、削除系コンポーネントを追加する際は必ず配線すること。**PC・モバイル問わず常時センタリング表示**（`items-center`固定、ドラッグハンドルバー無し）。`TodoFormModal`/`TagManagementModal`はモバイル幅でボトムシート型表示（`rounded-t-[22px] rounded-b-none` + `sm:rounded-[22px]`、上部中央にハンドルバー）に切り替わるが、`DeleteConfirmDialog`だけはClaude Designの意図（削除確認は常にモーダル中央）に合わせてボトムシート化しない（mobile-responsive-polishユニットでは他モーダルと同じボトムシート化パターンを誤って流用していたが、design-conformance-polishユニットで是正）。
@@ -79,5 +84,6 @@
 
 ## 最終更新
 
-- responsive-density-polish / 2026-08-16（本コミットで追加。commit SHA はコミット後に確認）
+- subtasks / 2026-08-16（本変更で更新。commit SHA はコミット後に確認）
+- responsive-density-polish / 2026-08-16
 - design-conformance-polish / 2026-08-15
