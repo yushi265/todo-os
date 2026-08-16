@@ -5,6 +5,7 @@ import type { TodoResponse, TodoStatus } from "../../shared/types";
 import { ApiError, useCreateTodo, useUpdateTodo } from "../hooks/useTodos";
 import TagMultiSelect from "./TagMultiSelect";
 import Button from "./ui/button";
+import ModalFrame from "./ui/modal-frame";
 
 type PriorityValue = "" | "HIGH" | "MEDIUM" | "LOW";
 
@@ -184,188 +185,185 @@ function TodoFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4">
+    <ModalFrame
+      ariaLabel={isEdit ? "TODOを編集" : "TODOを作成"}
+      overlayClassName="fixed inset-0 z-10 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4"
+      panelClassName="animate-[modal-in_0.2s_ease-out] max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[22px] rounded-b-none bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
+    >
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={isEdit ? "TODOを編集" : "TODOを作成"}
-        className="animate-[modal-in_0.2s_ease-out] max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[22px] rounded-b-none bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
-      >
-        <div
-          aria-hidden="true"
-          className="mx-auto h-1 w-10 rounded-full bg-border sm:hidden"
-        />
-        <h2 className="mb-4 text-lg font-semibold text-text-primary sm:text-base">
-          {isEdit ? "TODOを編集" : "TODOを作成"}
-        </h2>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-3">
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="todo-title"
-              className="text-sm font-medium text-text-secondary sm:text-xs"
-            >
-              タイトル
-            </label>
-            <input
-              id="todo-title"
-              ref={titleRef}
-              type="text"
-              maxLength={200}
-              value={values.title}
-              onChange={(e) =>
-                setValues((v) => ({ ...v, title: e.target.value }))
-              }
-              className="min-h-11 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
-            />
-            {fieldErrors.title && (
-              <p className="text-sm text-danger">{fieldErrors.title}</p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="todo-description"
-              className="text-sm font-medium text-text-secondary sm:text-xs"
-            >
-              説明
-            </label>
-            <textarea
-              id="todo-description"
-              rows={3}
-              value={values.description}
-              onChange={(e) =>
-                setValues((v) => ({ ...v, description: e.target.value }))
-              }
-              className="rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="todo-priority"
-              className="text-sm font-medium text-text-secondary sm:text-xs"
-            >
-              優先度
-            </label>
-            <select
-              id="todo-priority"
-              value={values.priority}
-              onChange={(e) =>
-                setValues((v) => ({
-                  ...v,
-                  priority: e.target.value as PriorityValue,
-                }))
-              }
-              className="min-h-11 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
-            >
-              <option value="">未設定</option>
-              <option value="HIGH">高</option>
-              <option value="MEDIUM">中</option>
-              <option value="LOW">低</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="todo-due-date"
-              className="text-sm font-medium text-text-secondary sm:text-xs"
-            >
-              期限
-            </label>
-            <input
-              id="todo-due-date"
-              type="date"
-              value={values.dueDate}
-              onChange={(e) =>
-                setValues((v) => ({ ...v, dueDate: e.target.value }))
-              }
-              className="min-h-11 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
-            />
-            {fieldErrors.dueDate && (
-              <p className="text-sm text-danger">{fieldErrors.dueDate}</p>
-            )}
-          </div>
-
-          <TagMultiSelect
-            selectedTagIds={values.tagIds}
-            onChange={(tagIds) => setValues((v) => ({ ...v, tagIds }))}
+        aria-hidden="true"
+        className="mx-auto h-1 w-10 rounded-full bg-border sm:hidden"
+      />
+      <h2 className="mb-4 text-lg font-semibold text-text-primary sm:text-base">
+        {isEdit ? "TODOを編集" : "TODOを作成"}
+      </h2>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-3">
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="todo-title"
+            className="text-sm font-medium text-text-secondary sm:text-xs"
+          >
+            タイトル
+          </label>
+          <input
+            id="todo-title"
+            ref={titleRef}
+            type="text"
+            maxLength={200}
+            value={values.title}
+            onChange={(e) =>
+              setValues((v) => ({ ...v, title: e.target.value }))
+            }
+            className="min-h-11 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
           />
-          {fieldErrors.tagIds && (
-            <p className="text-sm text-danger">{fieldErrors.tagIds}</p>
+          {fieldErrors.title && (
+            <p className="text-sm text-danger">{fieldErrors.title}</p>
           )}
+        </div>
 
-          {isEdit && (
-            <div className="flex flex-col gap-1">
-              <label
-                htmlFor="todo-status"
-                className="text-sm font-medium text-text-secondary sm:text-xs"
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="todo-description"
+            className="text-sm font-medium text-text-secondary sm:text-xs"
+          >
+            説明
+          </label>
+          <textarea
+            id="todo-description"
+            rows={3}
+            value={values.description}
+            onChange={(e) =>
+              setValues((v) => ({ ...v, description: e.target.value }))
+            }
+            className="rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="todo-priority"
+            className="text-sm font-medium text-text-secondary sm:text-xs"
+          >
+            優先度
+          </label>
+          <select
+            id="todo-priority"
+            value={values.priority}
+            onChange={(e) =>
+              setValues((v) => ({
+                ...v,
+                priority: e.target.value as PriorityValue,
+              }))
+            }
+            className="min-h-11 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
+          >
+            <option value="">未設定</option>
+            <option value="HIGH">高</option>
+            <option value="MEDIUM">中</option>
+            <option value="LOW">低</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="todo-due-date"
+            className="text-sm font-medium text-text-secondary sm:text-xs"
+          >
+            期限
+          </label>
+          <input
+            id="todo-due-date"
+            type="date"
+            value={values.dueDate}
+            onChange={(e) =>
+              setValues((v) => ({ ...v, dueDate: e.target.value }))
+            }
+            className="min-h-11 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
+          />
+          {fieldErrors.dueDate && (
+            <p className="text-sm text-danger">{fieldErrors.dueDate}</p>
+          )}
+        </div>
+
+        <TagMultiSelect
+          selectedTagIds={values.tagIds}
+          onChange={(tagIds) => setValues((v) => ({ ...v, tagIds }))}
+        />
+        {fieldErrors.tagIds && (
+          <p className="text-sm text-danger">{fieldErrors.tagIds}</p>
+        )}
+
+        {isEdit && (
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="todo-status"
+              className="text-sm font-medium text-text-secondary sm:text-xs"
+            >
+              ステータス
+            </label>
+            <div className="flex gap-2">
+              <select
+                id="todo-status"
+                value={values.status}
+                onChange={(e) =>
+                  setValues((v) => ({
+                    ...v,
+                    status: e.target.value as TodoStatus,
+                  }))
+                }
+                className="min-h-11 flex-1 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
               >
-                ステータス
-              </label>
-              <div className="flex gap-2">
-                <select
-                  id="todo-status"
-                  value={values.status}
-                  onChange={(e) =>
-                    setValues((v) => ({
-                      ...v,
-                      status: e.target.value as TodoStatus,
-                    }))
-                  }
-                  className="min-h-11 flex-1 rounded-xl border border-border px-3 py-2 text-sm text-text-primary sm:text-xs"
-                >
-                  {STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {/* ✓ 完了にする（AC-4）: フォーム内 state のみ変更し、送信（PATCH）は発火しない。
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {/* ✓ 完了にする（AC-4）: フォーム内 state のみ変更し、送信（PATCH）は発火しない。
                     status が既に DONE の間は不要な操作のため非表示にする（自己非表示）。 */}
-                {values.status !== "DONE" && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    type="button"
-                    onClick={() => setValues((v) => ({ ...v, status: "DONE" }))}
-                    className="min-h-11 shrink-0 rounded-xl bg-status-done-bg px-3 text-sm font-medium text-status-done-fg hover:opacity-90 sm:text-xs"
-                  >
-                    ✓ 完了にする
-                  </Button>
-                )}
-              </div>
+              {values.status !== "DONE" && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={() => setValues((v) => ({ ...v, status: "DONE" }))}
+                  className="min-h-11 shrink-0 rounded-xl bg-status-done-bg px-3 text-sm font-medium text-status-done-fg hover:opacity-90 sm:text-xs"
+                >
+                  ✓ 完了にする
+                </Button>
+              )}
             </div>
-          )}
-
-          {submitError && (
-            <p role="alert" className="text-sm text-danger">
-              {submitError}
-            </p>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2 sm:gap-1.5">
-            <Button
-              variant="ghost"
-              size="default"
-              type="button"
-              onClick={onClose}
-              className="min-h-11 rounded-xl px-4 py-2 text-sm text-text-secondary hover:bg-surface sm:px-3 sm:py-1.5 sm:text-xs"
-            >
-              キャンセル
-            </Button>
-            <Button
-              variant="default"
-              size="default"
-              type="submit"
-              disabled={isSubmitting}
-              className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white shadow-[0_4px_14px_rgba(0,0,0,0.12)] hover:bg-primary-hover disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-xs"
-            >
-              保存
-            </Button>
           </div>
-        </form>
-      </div>
-    </div>
+        )}
+
+        {submitError && (
+          <p role="alert" className="text-sm text-danger">
+            {submitError}
+          </p>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2 sm:gap-1.5">
+          <Button
+            variant="ghost"
+            size="default"
+            type="button"
+            onClick={onClose}
+            className="min-h-11 rounded-xl px-4 py-2 text-sm text-text-secondary hover:bg-surface sm:px-3 sm:py-1.5 sm:text-xs"
+          >
+            キャンセル
+          </Button>
+          <Button
+            variant="default"
+            size="default"
+            type="submit"
+            disabled={isSubmitting}
+            className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white shadow-[0_4px_14px_rgba(0,0,0,0.12)] hover:bg-primary-hover disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-xs"
+          >
+            保存
+          </Button>
+        </div>
+      </form>
+    </ModalFrame>
   );
 }
 

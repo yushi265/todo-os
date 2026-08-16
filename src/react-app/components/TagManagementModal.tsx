@@ -11,6 +11,7 @@ import {
 } from "../hooks/useTags";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import Button from "./ui/button";
+import ModalFrame from "./ui/modal-frame";
 
 interface TagManagementModalProps {
   onClose: () => void;
@@ -109,12 +110,11 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="タグ管理"
-        className="flex max-h-[90vh] w-full max-w-lg animate-[modal-in_0.2s_ease-out] flex-col gap-4 overflow-y-auto rounded-t-[22px] rounded-b-none bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
+    <>
+      <ModalFrame
+        ariaLabel="タグ管理"
+        overlayClassName="fixed inset-0 z-10 flex items-end justify-center bg-black/50 sm:items-center sm:p-4"
+        panelClassName="flex max-h-[90vh] w-full max-w-lg animate-[modal-in_0.2s_ease-out] flex-col gap-4 overflow-y-auto rounded-t-[22px] rounded-b-none bg-card p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:rounded-[22px] sm:p-6"
       >
         <div
           aria-hidden="true"
@@ -256,7 +256,7 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
             </p>
           )}
         </div>
-      </div>
+      </ModalFrame>
 
       {deleteTarget && (
         <DeleteConfirmDialog
@@ -287,7 +287,7 @@ function TagManagementModal({ onClose }: TagManagementModalProps) {
           </Button>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

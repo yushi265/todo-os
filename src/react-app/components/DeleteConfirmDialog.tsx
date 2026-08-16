@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import Button from "./ui/button";
+import ModalFrame from "./ui/modal-frame";
 
 interface DeleteConfirmDialogProps {
   title: string;
@@ -31,34 +32,31 @@ function DeleteConfirmDialog({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className="w-full max-w-md animate-[modal-in_0.2s_ease-out] rounded-[22px] bg-card p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)]"
-      >
-        <p className="mb-4 text-sm text-text-primary sm:text-xs">{message}</p>
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="ghost"
-            ref={cancelRef}
-            onClick={onClose}
-            className="px-4 py-2"
-          >
-            キャンセル
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={onConfirm}
-            disabled={isPending}
-            className="font-bold"
-          >
-            削除する
-          </Button>
-        </div>
+    <ModalFrame
+      ariaLabel={title}
+      overlayClassName="fixed inset-0 z-10 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      panelClassName="w-full max-w-md animate-[modal-in_0.2s_ease-out] rounded-[22px] bg-card p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)]"
+    >
+      <p className="mb-4 text-sm text-text-primary sm:text-xs">{message}</p>
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          ref={cancelRef}
+          onClick={onClose}
+          className="px-4 py-2"
+        >
+          キャンセル
+        </Button>
+        <Button
+          variant="destructive"
+          onClick={onConfirm}
+          disabled={isPending}
+          className="font-bold"
+        >
+          削除する
+        </Button>
       </div>
-    </div>
+    </ModalFrame>
   );
 }
 
