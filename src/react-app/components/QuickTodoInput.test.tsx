@@ -28,47 +28,40 @@ afterEach(() => {
 });
 
 describe("QuickTodoInput", () => {
-  it("renders an accessible title input and add button", () => {
+  it("renders an accessible title input without an add button", () => {
     renderWithQueryClient(<QuickTodoInput />);
 
     const form = screen.getByRole("form", {
       name: "TODOのクイック追加フォーム",
     });
     expect(screen.getByLabelText("クイック追加")).toHaveClass("min-h-11");
-    expect(screen.getByRole("button", { name: "追加" })).toHaveClass(
-      "min-h-11",
-    );
+    expect(
+      screen.queryByRole("button", { name: "追加" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByLabelText("追加時のタグ")).not.toBeInTheDocument();
     expect(form).toBeInTheDocument();
   });
 
-  it.each(["button", "enter"] as const)(
-    "creates a title-only todo with trimmed input via %s",
-    async (submitMethod) => {
-      const user = userEvent.setup();
-      fetchMock.mockResolvedValue(jsonResponse({ id: 1 }, 201));
-      renderWithQueryClient(<QuickTodoInput />);
+  it("creates a title-only todo with trimmed input via Enter", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue(jsonResponse({ id: 1 }, 201));
+    renderWithQueryClient(<QuickTodoInput />);
 
-      const input = screen.getByLabelText("クイック追加");
-      await user.type(input, "  クイックタスク  ");
-      if (submitMethod === "button") {
-        await user.click(screen.getByRole("button", { name: "追加" }));
-      } else {
-        await user.keyboard("{Enter}");
-      }
+    const input = screen.getByLabelText("クイック追加");
+    await user.type(input, "  クイックタスク  ");
+    await user.keyboard("{Enter}");
 
-      await waitFor(() => {
-        expect(fetchMock).toHaveBeenCalledWith(
-          "/api/todos",
-          expect.objectContaining({
-            method: "POST",
-            body: JSON.stringify({ title: "クイックタスク" }),
-          }),
-        );
-      });
-      await waitFor(() => expect(input).toHaveValue(""));
-    },
-  );
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/todos",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ title: "クイックタスク" }),
+        }),
+      );
+    });
+    await waitFor(() => expect(input).toHaveValue(""));
+  });
 
   it("adds the selected existing tag and keeps it selected after success", async () => {
     const user = userEvent.setup();
@@ -78,13 +71,8 @@ describe("QuickTodoInput", () => {
     );
 
     const tagSelect = screen.getByLabelText("追加時のタグ");
-    const addButton = screen.getByRole("button", { name: "追加" });
     expect(
       screen.getByLabelText("クイック追加").compareDocumentPosition(tagSelect) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      tagSelect.compareDocumentPosition(addButton) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(tagSelect).toHaveValue("");
@@ -92,7 +80,7 @@ describe("QuickTodoInput", () => {
     expect(tagSelect).toHaveValue("1");
 
     await user.type(screen.getByLabelText("クイック追加"), "タグ付きTODO");
-    await user.click(screen.getByRole("button", { name: "追加" }));
+    await user.keyboard("{Enter}");
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -119,7 +107,8 @@ describe("QuickTodoInput", () => {
 
       const input = screen.getByLabelText("クイック追加");
       fireEvent.change(input, { target: { value: title } });
-      await user.click(screen.getByRole("button", { name: "追加" }));
+      input.focus();
+      await user.keyboard("{Enter}");
 
       expect(await screen.findByRole("alert")).toHaveTextContent(message);
       expect(fetchMock).not.toHaveBeenCalled();
@@ -135,7 +124,7 @@ describe("QuickTodoInput", () => {
 
     const input = screen.getByLabelText("クイック追加");
     await user.type(input, "失敗するタスク");
-    await user.click(screen.getByRole("button", { name: "追加" }));
+    await user.keyboard("{Enter}");
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(
@@ -143,6 +132,25 @@ describe("QuickTodoInput", () => {
       );
     });
     expect(input).toHaveValue("失敗するタスク");
+  });
+
+  it("shows a validation message when the API returns 400", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue(
+      jsonResponse({ error: "Validation failed" }, 400),
+    );
+    renderWithQueryClient(<QuickTodoInput />);
+
+    const input = screen.getByLabelText("クイック追加");
+    await user.type(input, "入力エラーになるタスク");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "入力内容を確認してください",
+      );
+    });
+    expect(input).toHaveValue("入力エラーになるタスク");
   });
 
   it("prevents duplicate submissions while the request is pending", async () => {
@@ -156,9 +164,9 @@ describe("QuickTodoInput", () => {
 
     const input = screen.getByLabelText("クイック追加");
     await user.type(input, "二重送信しない");
-    await user.click(screen.getByRole("button", { name: "追加" }));
-    expect(screen.getByRole("button", { name: "追加中…" })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "追加中…" }));
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await user.keyboard("{Enter}");
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     resolveRequest(jsonResponse({ id: 2 }, 201));

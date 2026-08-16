@@ -3,7 +3,6 @@ import type { FormEvent } from "react";
 import { createTodoSchema } from "../../shared/schemas";
 import type { TagResponse } from "../../shared/types";
 import { ApiError, useCreateTodo } from "../hooks/useTodos";
-import Button from "./ui/button";
 
 interface QuickTodoInputProps {
   tags?: TagResponse[];
@@ -17,6 +16,7 @@ function QuickTodoInput({ tags = [] }: QuickTodoInputProps) {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (createMutation.isPending) return;
     setErrorMessage(null);
 
     const payload = {
@@ -87,14 +87,6 @@ function QuickTodoInput({ tags = [] }: QuickTodoInputProps) {
             </select>
           </div>
         )}
-        <Button
-          variant="default"
-          type="submit"
-          disabled={createMutation.isPending}
-          className="min-h-11 shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white shadow-[0_4px_14px_rgba(0,0,0,0.12)] hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {createMutation.isPending ? "追加中…" : "追加"}
-        </Button>
       </div>
       {errorMessage && (
         <p id="quick-todo-error" role="alert" className="text-sm text-danger">
