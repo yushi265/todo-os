@@ -1,13 +1,18 @@
 import { z } from "zod";
 
 const DUE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const uniqueTagIdsSchema = z
+  .array(z.number().int().positive())
+  .refine((tagIds) => new Set(tagIds).size === tagIds.length, {
+    message: "tagIds must not contain duplicate values",
+  });
 
 export const createTodoSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().nullable().optional(),
   priority: z.enum(["HIGH", "MEDIUM", "LOW"]).nullable().optional(),
   dueDate: z.string().regex(DUE_DATE_PATTERN).nullable().optional(),
-  tagIds: z.array(z.number().int().positive()).optional(),
+  tagIds: uniqueTagIdsSchema.optional(),
 });
 
 export const updateTodoSchema = z.object({
@@ -16,7 +21,7 @@ export const updateTodoSchema = z.object({
   status: z.enum(["TODO", "IN_PROGRESS", "DONE", "CANCELED"]).optional(),
   priority: z.enum(["HIGH", "MEDIUM", "LOW"]).nullable().optional(),
   dueDate: z.string().regex(DUE_DATE_PATTERN).nullable().optional(),
-  tagIds: z.array(z.number().int().positive()).optional(),
+  tagIds: uniqueTagIdsSchema.optional(),
 });
 
 export const reorderTodosSchema = z.object({

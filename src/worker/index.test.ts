@@ -237,6 +237,26 @@ describe("POST /api/todos", () => {
     expect(body.tags).toEqual([]);
   });
 
+  it("rejects duplicate tagIds with a validation error", async () => {
+    const tag = await createTag({ name: "duplicate-tag" });
+    const res = await call("POST", "/api/todos", {
+      title: "duplicate tag ids",
+      tagIds: [tag.id, tag.id],
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorResponse;
+    expect(body.error).toBe("Validation failed");
+    expect(body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: ["tagIds"],
+          message: "tagIds must not contain duplicate values",
+        }),
+      ]),
+    );
+  });
+
   it("rejects tagIds that do not exist and does not create the todo", async () => {
     const res = await call("POST", "/api/todos", {
       title: "bad tag ref",
@@ -1005,6 +1025,28 @@ describe("PATCH /api/todos/:id", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as TodoResponse;
     expect(body.tags).toEqual([]);
+  });
+
+  it("rejects duplicate tagIds and leaves the todo unchanged", async () => {
+    const tag = await createTag({ name: "duplicate-on-update" });
+    const created = await createTodo({
+      title: "original title",
+      tagIds: [tag.id],
+    });
+
+    const res = await call("PATCH", `/api/todos/${created.id}`, {
+      title: "should not apply",
+      tagIds: [tag.id, tag.id],
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorResponse;
+    expect(body.error).toBe("Validation failed");
+
+    const getRes = await call("GET", `/api/todos/${created.id}`);
+    const getBody = (await getRes.json()) as TodoResponse;
+    expect(getBody.title).toBe("original title");
+    expect(getBody.tags.map((item) => item.id)).toEqual([tag.id]);
   });
 
   it("rejects tagIds that do not exist on update and leaves the todo entirely unchanged", async () => {

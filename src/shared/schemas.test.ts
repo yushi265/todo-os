@@ -176,6 +176,23 @@ describe("createTodoSchema tagIds", () => {
     ).toBe(false);
   });
 
+  it("rejects duplicate tagIds", () => {
+    const result = createTodoSchema.safeParse({
+      title: "x",
+      tagIds: [1, 1],
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ["tagIds"],
+          message: "tagIds must not contain duplicate values",
+        }),
+      );
+    }
+  });
+
   it("omits tagIds from the parsed result when not provided", () => {
     const result = createTodoSchema.safeParse({ title: "x" });
 
@@ -197,6 +214,10 @@ describe("updateTodoSchema tagIds", () => {
 
   it("rejects a non-positive tagId", () => {
     expect(updateTodoSchema.safeParse({ tagIds: [-1] }).success).toBe(false);
+  });
+
+  it("rejects duplicate tagIds", () => {
+    expect(updateTodoSchema.safeParse({ tagIds: [2, 2] }).success).toBe(false);
   });
 
   it("omits tagIds from the parsed result when not provided", () => {
