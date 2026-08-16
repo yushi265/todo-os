@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TodoResponse } from "../../shared/types";
-import { buildFullReorderedIds } from "./reorder";
+import { buildFullReorderedIds, buildReorderedIds } from "./reorder";
 
 function makeTodo(id: number): TodoResponse {
   return {
@@ -45,4 +45,21 @@ describe("buildFullReorderedIds", () => {
 
     expect(buildFullReorderedIds(todos, [20, 10])).toEqual([20, 10]);
   });
+});
+
+describe("buildReorderedIds", () => {
+  it("moves the source id to the target position", () => {
+    expect(buildReorderedIds([1, 2, 3], 1, 3)).toEqual([2, 3, 1]);
+  });
+
+  it.each([
+    [1, 1],
+    [99, 2],
+    [1, 99],
+  ] as const)(
+    "returns null when the move is not applicable: %s -> %s",
+    (sourceId, targetId) => {
+      expect(buildReorderedIds([1, 2, 3], sourceId, targetId)).toBeNull();
+    },
+  );
 });

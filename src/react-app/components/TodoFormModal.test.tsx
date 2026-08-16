@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TodoFormModal from "./TodoFormModal";
@@ -244,6 +244,42 @@ describe("TodoFormModal", () => {
         }),
       );
     });
+  });
+
+  it("does not submit twice when the form is submitted again while pending", async () => {
+    let resolveRequest!: (response: Response) => void;
+    const pendingResponse = new Promise<Response>((resolve) => {
+      resolveRequest = resolve;
+    });
+    fetchMock.mockImplementation((url: string) => {
+      if (url === "/api/tags") return Promise.resolve(jsonResponse([]));
+      return pendingResponse;
+    });
+
+    renderWithQueryClient(
+      <TodoFormModal
+        isEdit={false}
+        todo={null}
+        onClose={vi.fn()}
+        onNotFound={vi.fn()}
+      />,
+    );
+
+    await userEvent.setup().type(screen.getByLabelText("タイトル"), "二重送信");
+    const form = screen
+      .getByRole("dialog", { name: "TODOを作成" })
+      .querySelector("form");
+    expect(form).not.toBeNull();
+    const postCalls = () =>
+      fetchMock.mock.calls.filter(([url]) => url === "/api/todos");
+
+    fireEvent.submit(form!);
+    await waitFor(() => expect(postCalls()).toHaveLength(1));
+
+    fireEvent.submit(form!);
+    expect(postCalls()).toHaveLength(1);
+
+    resolveRequest(jsonResponse({ id: 1, title: "二重送信" }, 201));
   });
 
   // [境界値] タイトル空文字で送信 → クライアント側バリデーションでエラー表示、mutation は呼ばれない

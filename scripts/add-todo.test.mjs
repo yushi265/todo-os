@@ -60,6 +60,54 @@ describe("add-todo CLI", () => {
     );
   });
 
+  it("rejects invalid command options before making a request", () => {
+    assert.throws(
+      () =>
+        buildRequest(
+          { title: "  ", tagIds: [] },
+          {
+            TODO_OS_URL: "https://todo.example.com",
+            TODO_OS_ACCESS_CLIENT_ID: "client-id",
+            TODO_OS_ACCESS_CLIENT_SECRET: "client-secret",
+          },
+        ),
+      /--title は1〜200文字で指定してください/,
+    );
+  });
+
+  it("surfaces an API error message for non-2xx responses", async () => {
+    await assert.rejects(
+      addTodo(
+        { title: "失敗するTODO", tagIds: [] },
+        {
+          TODO_OS_URL: "https://todo.example.com",
+          TODO_OS_ACCESS_CLIENT_ID: "client-id",
+          TODO_OS_ACCESS_CLIENT_SECRET: "client-secret",
+        },
+        async () =>
+          new Response(JSON.stringify({ error: "Validation failed" }), {
+            status: 400,
+          }),
+      ),
+      /TODOの追加に失敗しました: Validation failed/,
+    );
+  });
+
+  it("falls back to the HTTP status when an API error is not JSON", async () => {
+    await assert.rejects(
+      addTodo(
+        { title: "失敗するTODO", tagIds: [] },
+        {
+          TODO_OS_URL: "https://todo.example.com",
+          TODO_OS_ACCESS_CLIENT_ID: "client-id",
+          TODO_OS_ACCESS_CLIENT_SECRET: "client-secret",
+        },
+        async () => new Response("upstream failure", { status: 502 }),
+      ),
+      /TODOの追加に失敗しました: HTTP 502/,
+    );
+  });
+
   it("returns the API response and sends the request once", async () => {
     const calls = [];
     const todo = { id: 9, title: "追加済み" };

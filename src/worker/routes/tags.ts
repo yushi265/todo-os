@@ -4,6 +4,7 @@ import { asc, eq, sql } from "drizzle-orm";
 import { tags } from "../../db/schema";
 import { createTagSchema, updateTagSchema } from "../../shared/schemas";
 import type { ErrorResponse, TagResponse } from "../../shared/types";
+import { parseJsonBody } from "../request";
 
 const tagsRoute = new Hono<{ Bindings: Env }>();
 
@@ -34,7 +35,11 @@ tagsRoute.get("/", async (c) => {
 });
 
 tagsRoute.post("/", async (c) => {
-  const parsed = createTagSchema.safeParse(await c.req.json());
+  const body = await parseJsonBody(c.req.raw);
+  if (!body.ok) {
+    return c.json({ error: "Invalid JSON" } satisfies ErrorResponse, 400);
+  }
+  const parsed = createTagSchema.safeParse(body.data);
   if (!parsed.success) {
     return c.json(
       {
@@ -65,7 +70,11 @@ tagsRoute.post("/", async (c) => {
 
 tagsRoute.patch("/:id", async (c) => {
   const id = Number(c.req.param("id"));
-  const parsed = updateTagSchema.safeParse(await c.req.json());
+  const body = await parseJsonBody(c.req.raw);
+  if (!body.ok) {
+    return c.json({ error: "Invalid JSON" } satisfies ErrorResponse, 400);
+  }
+  const parsed = updateTagSchema.safeParse(body.data);
   if (!parsed.success) {
     return c.json(
       {

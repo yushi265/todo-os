@@ -28,6 +28,7 @@ import type {
   TagResponse,
   TodoResponse,
 } from "../../shared/types";
+import { parseJsonBody } from "../request";
 
 const todosRoute = new Hono<{ Bindings: Env }>();
 
@@ -50,17 +51,21 @@ export function buildOrderBy(
   switch (sortBy) {
     case "dueDate":
       // Keep null due dates at the end for both directions.
-      return [asc(sql`${todos.dueDate} IS NULL`), direction(todos.dueDate)];
+      return [
+        asc(sql`${todos.dueDate} IS NULL`),
+        direction(todos.dueDate),
+        asc(todos.id),
+      ];
     case "priority": {
       const rank = sql`CASE ${todos.priority} WHEN 'HIGH' THEN 3 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 1 ELSE 0 END`;
-      return [direction(rank)];
+      return [direction(rank), asc(todos.id)];
     }
     case "createdAt":
-      return [direction(todos.createdAt)];
+      return [direction(todos.createdAt), asc(todos.id)];
     case "updatedAt":
-      return [direction(todos.updatedAt)];
+      return [direction(todos.updatedAt), asc(todos.id)];
     default:
-      return [asc(todos.sortOrder)];
+      return [asc(todos.sortOrder), asc(todos.id)];
   }
 }
 
@@ -171,7 +176,11 @@ todosRoute.get("/", async (c) => {
 });
 
 todosRoute.post("/", async (c) => {
-  const parsed = createTodoSchema.safeParse(await c.req.json());
+  const body = await parseJsonBody(c.req.raw);
+  if (!body.ok) {
+    return c.json({ error: "Invalid JSON" } satisfies ErrorResponse, 400);
+  }
+  const parsed = createTodoSchema.safeParse(body.data);
   if (!parsed.success) {
     return c.json(
       {
@@ -232,7 +241,11 @@ todosRoute.get("/:id", async (c) => {
 });
 
 todosRoute.patch("/reorder", async (c) => {
-  const parsed = reorderTodosSchema.safeParse(await c.req.json());
+  const body = await parseJsonBody(c.req.raw);
+  if (!body.ok) {
+    return c.json({ error: "Invalid JSON" } satisfies ErrorResponse, 400);
+  }
+  const parsed = reorderTodosSchema.safeParse(body.data);
   if (!parsed.success) {
     return c.json(
       {
@@ -279,7 +292,11 @@ todosRoute.patch("/reorder", async (c) => {
 
 todosRoute.patch("/:id", async (c) => {
   const id = Number(c.req.param("id"));
-  const parsed = updateTodoSchema.safeParse(await c.req.json());
+  const body = await parseJsonBody(c.req.raw);
+  if (!body.ok) {
+    return c.json({ error: "Invalid JSON" } satisfies ErrorResponse, 400);
+  }
+  const parsed = updateTodoSchema.safeParse(body.data);
   if (!parsed.success) {
     return c.json(
       {

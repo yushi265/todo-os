@@ -27,23 +27,32 @@ describe("calculateNextSortOrder", () => {
 
 describe("buildOrderBy", () => {
   it.each([
-    ["manual", "asc", ['"todos"."sort_order" asc']],
-    ["manual", "desc", ['"todos"."sort_order" asc']],
+    ["manual", "asc", ['"todos"."sort_order" asc', '"todos"."id" asc']],
+    ["manual", "desc", ['"todos"."sort_order" asc', '"todos"."id" asc']],
     [
       "dueDate",
       "asc",
-      ['"todos"."due_date" IS NULL asc', '"todos"."due_date" asc'],
+      [
+        '"todos"."due_date" IS NULL asc',
+        '"todos"."due_date" asc',
+        '"todos"."id" asc',
+      ],
     ],
     [
       "dueDate",
       "desc",
-      ['"todos"."due_date" IS NULL asc', '"todos"."due_date" desc'],
+      [
+        '"todos"."due_date" IS NULL asc',
+        '"todos"."due_date" desc',
+        '"todos"."id" asc',
+      ],
     ],
     [
       "priority",
       "asc",
       [
         "CASE \"todos\".\"priority\" WHEN 'HIGH' THEN 3 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 1 ELSE 0 END asc",
+        '"todos"."id" asc',
       ],
     ],
     [
@@ -51,12 +60,13 @@ describe("buildOrderBy", () => {
       "desc",
       [
         "CASE \"todos\".\"priority\" WHEN 'HIGH' THEN 3 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 1 ELSE 0 END desc",
+        '"todos"."id" asc',
       ],
     ],
-    ["createdAt", "asc", ['"todos"."created_at" asc']],
-    ["createdAt", "desc", ['"todos"."created_at" desc']],
-    ["updatedAt", "asc", ['"todos"."updated_at" asc']],
-    ["updatedAt", "desc", ['"todos"."updated_at" desc']],
+    ["createdAt", "asc", ['"todos"."created_at" asc', '"todos"."id" asc']],
+    ["createdAt", "desc", ['"todos"."created_at" desc', '"todos"."id" asc']],
+    ["updatedAt", "asc", ['"todos"."updated_at" asc', '"todos"."id" asc']],
+    ["updatedAt", "desc", ['"todos"."updated_at" desc', '"todos"."id" asc']],
   ] as const)(
     "maps %s/%s to the intended Drizzle orderBy expressions",
     (sortBy, sortOrder, expected) => {

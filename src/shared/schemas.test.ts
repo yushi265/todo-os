@@ -3,6 +3,7 @@ import {
   createTagSchema,
   createTodoSchema,
   listTodosQuerySchema,
+  reorderTodosSchema,
   updateTagSchema,
   updateTodoSchema,
 } from "./schemas";
@@ -205,6 +206,23 @@ describe("updateTodoSchema tagIds", () => {
     if (result.success) {
       expect("tagIds" in result.data).toBe(false);
     }
+  });
+});
+
+describe("reorderTodosSchema", () => {
+  it("accepts an ordered list of positive integer ids", () => {
+    expect(reorderTodosSchema.safeParse({ todoIds: [3, 1, 2] }).success).toBe(
+      true,
+    );
+  });
+
+  it.each([
+    { todoIds: [0, 1] },
+    { todoIds: [-1] },
+    { todoIds: [1.5] },
+    { todoIds: ["1"] },
+  ])("rejects invalid todoIds: %j", (value) => {
+    expect(reorderTodosSchema.safeParse(value).success).toBe(false);
   });
 });
 

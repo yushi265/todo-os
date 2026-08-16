@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ThemeSettingsModal from "./ThemeSettingsModal";
@@ -57,5 +57,38 @@ describe("ThemeSettingsModal", () => {
     await user.click(screen.getByRole("button", { name: "閉じる" }));
 
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("closes when Escape is pressed", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+
+    render(
+      <ThemeSettingsModal
+        theme="default"
+        onThemeChange={vi.fn()}
+        onClose={onClose}
+      />,
+    );
+
+    await user.keyboard("{Escape}");
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("focuses the close button when opened", async () => {
+    render(
+      <ThemeSettingsModal
+        theme="default"
+        onThemeChange={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "閉じる" }),
+      );
+    });
   });
 });

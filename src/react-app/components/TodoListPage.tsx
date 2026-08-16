@@ -15,6 +15,12 @@ import type { SortBy, TodoFilters } from "../hooks/useTodos";
 import { useTags } from "../hooks/useTags";
 import { nextStatus } from "../lib/statusStyles";
 import { buildFullReorderedIds } from "../lib/reorder";
+import {
+  isDataInOptimisticOrder,
+  orderTodosByIds,
+  todoToCreateInput,
+  todoToUpdateInput,
+} from "../lib/todoTransforms";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 import TagManagementModal from "./TagManagementModal";
 import TagSwitcher from "./TagSwitcher";
@@ -63,51 +69,6 @@ function readStoredTagFilter(): number | null {
   } catch {
     return null;
   }
-}
-
-function todoToUpdateInput(todo: TodoResponse): UpdateTodoInput {
-  return {
-    title: todo.title,
-    description: todo.description,
-    status: todo.status,
-    priority: todo.priority,
-    dueDate: todo.dueDate,
-    tagIds: todo.tags.map((tag) => tag.id),
-  };
-}
-
-function todoToCreateInput(todo: TodoResponse): CreateTodoInput {
-  return {
-    title: todo.title,
-    description: todo.description,
-    priority: todo.priority,
-    dueDate: todo.dueDate,
-    tagIds: todo.tags.map((tag) => tag.id),
-  };
-}
-
-function orderTodosByIds(
-  todos: TodoResponse[],
-  orderedIds: number[],
-): TodoResponse[] {
-  const positions = new Map(orderedIds.map((id, index) => [id, index]));
-  return [...todos].sort(
-    (left, right) =>
-      (positions.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-      (positions.get(right.id) ?? Number.MAX_SAFE_INTEGER),
-  );
-}
-
-function isDataInOptimisticOrder(
-  data: TodoResponse[],
-  optimisticOrderIds: number[],
-): boolean {
-  const dataIds = data.map((todo) => todo.id);
-  const expectedIds = optimisticOrderIds.filter((id) => dataIds.includes(id));
-  return (
-    expectedIds.length === dataIds.length &&
-    expectedIds.every((id, index) => id === dataIds[index])
-  );
 }
 
 /** TODO 一覧画面。データ取得・状態の出し分け（読み込み中/エラー/空/成功）を統括する。 */

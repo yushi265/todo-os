@@ -27,6 +27,14 @@ function buildRequest(method: string, path: string, body?: unknown): Request {
   });
 }
 
+function buildRawRequest(method: string, path: string, body: string): Request {
+  return new Request(`${BASE_URL}${path}`, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
+}
+
 function todayInTokyo(offsetDays = 0): string {
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Tokyo",
@@ -44,6 +52,14 @@ async function call(
   return exports.default.fetch(buildRequest(method, path, body));
 }
 
+async function callRaw(
+  method: string,
+  path: string,
+  body: string,
+): Promise<Response> {
+  return exports.default.fetch(buildRawRequest(method, path, body));
+}
+
 async function createTodo(body: unknown): Promise<TodoResponse> {
   const res = await call("POST", "/api/todos", body);
   return (await res.json()) as TodoResponse;
@@ -55,6 +71,22 @@ async function createTag(body: unknown): Promise<TagResponse> {
 }
 
 describe("POST /api/todos", () => {
+  it.each([
+    ["POST", "/api/todos"],
+    ["PATCH", "/api/todos/reorder"],
+    ["PATCH", "/api/todos/1"],
+    ["POST", "/api/tags"],
+    ["PATCH", "/api/tags/1"],
+  ] as const)(
+    "returns 400 for malformed JSON on %s %s",
+    async (method, path) => {
+      const res = await callRaw(method, path, "{not-json");
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "Invalid JSON" });
+    },
+  );
+
   it("creates a todo with a 1-character title", async () => {
     const res = await call("POST", "/api/todos", { title: "a" });
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent, KeyboardEvent, TouchEvent } from "react";
 import type { TodoResponse } from "../../shared/types";
+import { buildReorderedIds } from "../lib/reorder";
 import CompletedTodoListItem from "./CompletedTodoListItem";
 import TodoListItem from "./TodoListItem";
 
@@ -117,19 +118,12 @@ function TodoList({
     setKeyboardDragId(null);
   }
 
-  function reorderedIds(sourceId: number, targetId: number): number[] | null {
-    if (sourceId === targetId) return null;
-    const ids = draggableTodos.map((todo) => todo.id);
-    const sourceIndex = ids.indexOf(sourceId);
-    const targetIndex = ids.indexOf(targetId);
-    if (sourceIndex === -1 || targetIndex === -1) return null;
-    const [movedId] = ids.splice(sourceIndex, 1);
-    ids.splice(targetIndex, 0, movedId);
-    return ids;
-  }
-
   function commitReorder(sourceId: number, targetId: number) {
-    const ids = reorderedIds(sourceId, targetId);
+    const ids = buildReorderedIds(
+      draggableTodos.map((todo) => todo.id),
+      sourceId,
+      targetId,
+    );
     if (!ids) return;
     onReorder(ids);
   }
