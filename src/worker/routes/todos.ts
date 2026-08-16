@@ -339,22 +339,37 @@ todosRoute.patch("/:id", async (c) => {
   if ("priority" in parsed.data) updates.priority = parsed.data.priority;
   if ("dueDate" in parsed.data) updates.dueDate = parsed.data.dueDate;
 
-  const [updated] = await db
-    .update(todos)
-    .set(updates)
-    .where(eq(todos.id, id))
-    .returning();
+  const updateStatement = db.update(todos).set(updates).where(eq(todos.id, id));
 
   if ("tagIds" in parsed.data) {
     const tagIds = parsed.data.tagIds ?? [];
-    await db.delete(todoTags).where(eq(todoTags.todoId, id));
-    if (tagIds.length > 0) {
-      await db
-        .insert(todoTags)
-        .values(tagIds.map((tagId) => ({ todoId: id, tagId })));
+    const statements = [
+      updateStatement,
+      db.delete(todoTags).where(eq(todoTags.todoId, id)),
+      ...(tagIds.length > 0
+        ? [
+            db
+              .insert(todoTags)
+              .values(tagIds.map((tagId) => ({ todoId: id, tagId }))),
+          ]
+        : []),
+    ];
+    await db.batch(
+      statements as [
+        (typeof statements)[number],
+        ...(typeof statements)[number][],
+      ],
+    );
+
+    const updated = await findTodoById(db, id);
+    if (!updated) {
+      throw new Error(`Todo disappeared during update: ${id}`);
     }
+    const [withTags] = await attachTags(db, [updated]);
+    return c.json(withTags satisfies TodoResponse);
   }
 
+  const [updated] = await updateStatement.returning();
   const [withTags] = await attachTags(db, [updated]);
   return c.json(withTags satisfies TodoResponse);
 });

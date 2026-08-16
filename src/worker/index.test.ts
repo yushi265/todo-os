@@ -995,6 +995,42 @@ describe("PATCH /api/todos/:id", () => {
     );
   });
 
+  it("rolls back the todo and tag associations when replacing tags fails", async () => {
+    const originalTag = await createTag({ name: "atomic-original" });
+    const replacementTag = await createTag({ name: "atomic-replacement" });
+    const created = await createTodo({
+      title: "original title",
+      tagIds: [originalTag.id],
+    });
+
+    await env.DB.prepare(
+      `
+      CREATE TRIGGER fail_todo_tag_insert
+      BEFORE INSERT ON todo_tags
+      BEGIN
+        SELECT RAISE(ABORT, 'forced todo_tags insert failure');
+      END;
+    `,
+    ).run();
+
+    try {
+      const res = await call("PATCH", `/api/todos/${created.id}`, {
+        title: "updated title",
+        tagIds: [replacementTag.id],
+      });
+
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual({ error: "Internal server error" });
+    } finally {
+      await env.DB.prepare("DROP TRIGGER fail_todo_tag_insert").run();
+    }
+
+    const getRes = await call("GET", `/api/todos/${created.id}`);
+    const body = (await getRes.json()) as TodoResponse;
+    expect(body.title).toBe("original title");
+    expect(body.tags.map((tag) => tag.id)).toEqual([originalTag.id]);
+  });
+
   it("leaves existing tag associations unchanged when tagIds is omitted", async () => {
     const tag = await createTag({ name: "keep-me" });
     const created = await createTodo({
