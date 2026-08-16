@@ -5,11 +5,11 @@ import type {
   UpdateTodoInput,
 } from "../../shared/schemas";
 import type {
-  ErrorResponse,
   TodoPriority,
   TodoResponse,
   TodoStatus,
 } from "../../shared/types";
+import { requestJson, requestVoid } from "../lib/api";
 
 export const TODOS_QUERY_KEY = ["todos"] as const;
 
@@ -41,14 +41,8 @@ export class ApiError extends Error {
   }
 }
 
-async function toApiError(res: Response): Promise<ApiError> {
-  try {
-    const body = (await res.json()) as ErrorResponse;
-    return new ApiError(res.status, body.error || `HTTP ${res.status}`);
-  } catch {
-    return new ApiError(res.status, `HTTP ${res.status}`);
-  }
-}
+const createApiError = (status: number, message: string) =>
+  new ApiError(status, message);
 
 export async function fetchTodos(
   params: ListTodosParams = {},
@@ -73,25 +67,23 @@ export async function fetchTodos(
   if (params.sortOrder) query.set("sortOrder", params.sortOrder);
 
   const queryString = query.toString();
-  const res = await fetch(
+  return requestJson<TodoResponse[], ApiError>(
     queryString ? `/api/todos?${queryString}` : "/api/todos",
+    undefined,
+    createApiError,
   );
-  if (!res.ok) {
-    throw await toApiError(res);
-  }
-  return (await res.json()) as TodoResponse[];
 }
 
 async function createTodo(input: CreateTodoInput): Promise<TodoResponse> {
-  const res = await fetch("/api/todos", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!res.ok) {
-    throw await toApiError(res);
-  }
-  return (await res.json()) as TodoResponse;
+  return requestJson(
+    "/api/todos",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    createApiError,
+  );
 }
 
 interface UpdateTodoArgs {
@@ -103,33 +95,31 @@ async function updateTodo({
   id,
   input,
 }: UpdateTodoArgs): Promise<TodoResponse> {
-  const res = await fetch(`/api/todos/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!res.ok) {
-    throw await toApiError(res);
-  }
-  return (await res.json()) as TodoResponse;
+  return requestJson(
+    `/api/todos/${id}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    createApiError,
+  );
 }
 
 async function deleteTodo(id: number): Promise<void> {
-  const res = await fetch(`/api/todos/${id}`, { method: "DELETE" });
-  if (!res.ok) {
-    throw await toApiError(res);
-  }
+  return requestVoid(`/api/todos/${id}`, { method: "DELETE" }, createApiError);
 }
 
 async function reorderTodos(input: ReorderTodosInput): Promise<void> {
-  const res = await fetch("/api/todos/reorder", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!res.ok) {
-    throw await toApiError(res);
-  }
+  return requestVoid(
+    "/api/todos/reorder",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    createApiError,
+  );
 }
 
 /**

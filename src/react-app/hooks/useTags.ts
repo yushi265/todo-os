@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateTagInput, UpdateTagInput } from "../../shared/schemas";
-import type { ErrorResponse, TagResponse } from "../../shared/types";
+import type { TagResponse } from "../../shared/types";
+import { requestJson, requestVoid } from "../lib/api";
 import { TODOS_QUERY_KEY } from "./useTodos";
 
 export const TAGS_QUERY_KEY = ["tags"] as const;
@@ -16,14 +17,8 @@ export class TagApiError extends Error {
   }
 }
 
-async function toTagApiError(res: Response): Promise<TagApiError> {
-  try {
-    const body = (await res.json()) as ErrorResponse;
-    return new TagApiError(res.status, body.error || `HTTP ${res.status}`);
-  } catch {
-    return new TagApiError(res.status, `HTTP ${res.status}`);
-  }
-}
+const createTagApiError = (status: number, message: string) =>
+  new TagApiError(status, message);
 
 /**
  * タグ作成・リネームの mutation エラーを表示用メッセージへ変換する（異常系挙動表）。
@@ -42,23 +37,23 @@ export function tagMutationErrorMessage(error: unknown): string {
 }
 
 async function fetchTags(): Promise<TagResponse[]> {
-  const res = await fetch("/api/tags");
-  if (!res.ok) {
-    throw await toTagApiError(res);
-  }
-  return (await res.json()) as TagResponse[];
+  return requestJson<TagResponse[], TagApiError>(
+    "/api/tags",
+    undefined,
+    createTagApiError,
+  );
 }
 
 async function createTag(input: CreateTagInput): Promise<TagResponse> {
-  const res = await fetch("/api/tags", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!res.ok) {
-    throw await toTagApiError(res);
-  }
-  return (await res.json()) as TagResponse;
+  return requestJson<TagResponse, TagApiError>(
+    "/api/tags",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    createTagApiError,
+  );
 }
 
 interface UpdateTagArgs {
@@ -67,22 +62,23 @@ interface UpdateTagArgs {
 }
 
 async function updateTag({ id, input }: UpdateTagArgs): Promise<TagResponse> {
-  const res = await fetch(`/api/tags/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!res.ok) {
-    throw await toTagApiError(res);
-  }
-  return (await res.json()) as TagResponse;
+  return requestJson<TagResponse, TagApiError>(
+    `/api/tags/${id}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    createTagApiError,
+  );
 }
 
 async function deleteTag(id: number): Promise<void> {
-  const res = await fetch(`/api/tags/${id}`, { method: "DELETE" });
-  if (!res.ok) {
-    throw await toTagApiError(res);
-  }
+  return requestVoid(
+    `/api/tags/${id}`,
+    { method: "DELETE" },
+    createTagApiError,
+  );
 }
 
 /**
