@@ -2,6 +2,19 @@
 
 このファイルはこのプロジェクト向けの Codex 等（Claude Code 以外の AI）の入口です。
 
+## プロジェクト概要
+
+todo-osは、React SPAとHono APIを単一のCloudflare Workerとして動かす個人用TODO管理アプリです。データはDrizzle ORM経由でCloudflare D1へ保存し、UIとAPIの共有契約は`src/shared/`で管理します。
+
+- UI: `src/react-app/`
+- API: `src/worker/`
+- DBスキーマ: `src/db/`
+- 共有型・Zodスキーマ: `src/shared/`
+- D1マイグレーション: `drizzle/`
+- 人間向け入口: [`README.md`](./README.md)
+
+基本コマンドは`pnpm dev`（ローカル開発）、`pnpm test`（全テスト）、`pnpm typecheck`（型チェック）、`pnpm lint`（lint）です。詳細はREADMEと[`docs/index.md`](./docs/index.md)を参照してください。
+
 共通遵守事項は Claude Code 向けの [`CLAUDE.md`](./CLAUDE.md) と同一です。あわせて次を参照してください。
 
 - ハーネスの全体像・使い方: [`.claude/README.md`](./.claude/README.md)
