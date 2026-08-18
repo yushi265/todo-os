@@ -19,3 +19,26 @@ describe("favicon", () => {
     expect(favicon).toContain('fill="#52525b"');
   });
 });
+
+describe("PWA metadata", () => {
+  it("links the manifest and mobile app metadata from the document head", () => {
+    expect(indexHtml).toContain(
+      '<link rel="manifest" href="/manifest.webmanifest" />',
+    );
+    expect(indexHtml).toContain(
+      '<meta name="theme-color" content="#52525b" />',
+    );
+    expect(indexHtml).toContain(
+      '<meta name="mobile-web-app-capable" content="yes" />',
+    );
+    expect(indexHtml).toContain(
+      '<meta name="apple-mobile-web-app-capable" content="yes" />',
+    );
+    expect(indexHtml).toContain(
+      '<meta name="apple-mobile-web-app-title" content="todo-os" />',
+    );
+    expect(indexHtml).toContain(
+      '<link rel="apple-touch-icon" href="/pwa-192.png" />',
+    );
+  });
+});
