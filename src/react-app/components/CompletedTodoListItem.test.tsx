@@ -261,8 +261,8 @@ describe("CompletedTodoListItem", () => {
     const row = screen.getByTestId("todo-item-10");
     const metadata = screen.getByText("2026/08/11 00:30").parentElement;
 
-    expect(row).toHaveClass("gap-2", "sm:gap-1.5");
-    expect(row).toHaveClass("p-4", "sm:p-3");
+    expect(row).toHaveClass("gap-1.5", "sm:gap-1");
+    expect(row).toHaveClass("p-2.5", "sm:p-2");
     expect(metadata).toHaveClass("text-sm", "sm:text-xs");
   });
 

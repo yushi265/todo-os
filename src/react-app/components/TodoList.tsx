@@ -341,7 +341,7 @@ function TodoList({
           {dragAnnouncement}
         </p>
       )}
-      <ul aria-label="TODO一覧" className="flex flex-col gap-3 sm:gap-2">
+      <ul aria-label="TODO一覧" className="flex flex-col gap-1.5 sm:gap-1">
         {orderedVisibleTodos.map((todo) =>
           isCompleted(todo) ? (
             <CompletedTodoListItem

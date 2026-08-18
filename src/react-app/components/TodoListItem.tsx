@@ -128,7 +128,7 @@ function TodoListItem({
       onTouchEnd={onTouchEnd}
       onTouchCancel={onTouchCancel}
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-1 px-3 sm:px-2.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-1 px-1.5 sm:px-1">
         <LinkifiedText
           text={todo.title}
           className="text-sm font-medium text-text-primary"

@@ -77,7 +77,7 @@ function TodoCardShell({
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
       onTouchCancel={onTouchCancel}
-      className={`flex animate-[todo-item-in_0.24s_ease-out] items-center gap-2 rounded-2xl border border-border-subtle bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-[transform,box-shadow] duration-200 ease-out hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] ${dragEnabled ? "cursor-grab" : "cursor-pointer"} ${isDragging || isKeyboardDragging ? "relative z-10 -translate-y-1 scale-[1.02] cursor-grabbing shadow-[0_12px_24px_rgba(0,0,0,0.16)]" : ""} ${isDragOver || isKeyboardDragging ? "border-chip-border bg-chip-bg" : ""} sm:gap-1.5 sm:p-3`}
+      className={`flex animate-[todo-item-in_0.24s_ease-out] items-center gap-1.5 rounded-2xl border border-border-subtle bg-card p-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-[transform,box-shadow] duration-200 ease-out hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] ${dragEnabled ? "cursor-grab" : "cursor-pointer"} ${isDragging || isKeyboardDragging ? "relative z-10 -translate-y-1 scale-[1.02] cursor-grabbing shadow-[0_12px_24px_rgba(0,0,0,0.16)]" : ""} ${isDragOver || isKeyboardDragging ? "border-chip-border bg-chip-bg" : ""} sm:gap-1 sm:p-2`}
       data-testid={`todo-item-${todo.id}`}
     >
       {statusIcon}

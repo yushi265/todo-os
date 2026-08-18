@@ -581,7 +581,7 @@ describe("TodoListItem", () => {
     const title = screen.getByText("左端揃え確認");
     const priorityIcon = screen.getByTestId("priority-icon-HIGH");
 
-    expect(title.parentElement).toHaveClass("px-3", "sm:px-2.5");
+    expect(title.parentElement).toHaveClass("px-1.5", "sm:px-1");
     expect(priorityIcon.parentElement).toHaveClass("w-full");
   });
 
@@ -646,9 +646,9 @@ describe("TodoListItem", () => {
     const row = screen.getByTestId("todo-item-10");
     const metadata = screen.getByTestId("priority-icon-HIGH").parentElement;
 
-    expect(row).toHaveClass("gap-2", "sm:gap-1.5");
+    expect(row).toHaveClass("gap-1.5", "sm:gap-1");
     expect(metadata).toHaveClass("gap-x-2", "sm:gap-x-1.5");
-    expect(row).toHaveClass("p-4", "sm:p-3");
+    expect(row).toHaveClass("p-2.5", "sm:p-2");
     expect(metadata).toHaveClass("text-sm", "sm:text-xs");
   });
 

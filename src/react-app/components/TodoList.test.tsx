@@ -56,7 +56,7 @@ describe("TodoList", () => {
       />,
     );
 
-    expect(screen.getByRole("list")).toHaveClass("gap-3", "sm:gap-2");
+    expect(screen.getByRole("list")).toHaveClass("gap-1.5", "sm:gap-1");
   });
 
   // [代表値] 終了済みトグル OFF で DONE/CANCELED の TODO が一覧に表示されない
