@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { createTodoSchema } from "../../shared/schemas";
 import type { TagResponse } from "../../shared/types";
 import { ApiError, useCreateTodo } from "../hooks/useTodos";
+import Button from "./ui/button";
 
 interface QuickTodoInputProps {
   tags?: TagResponse[];
@@ -59,7 +60,7 @@ function QuickTodoInput({ tags = [] }: QuickTodoInputProps) {
           maxLength={200}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="TODOを入力してEnterで追加"
+          placeholder="TODOを入力して追加"
           aria-describedby={errorMessage ? "quick-todo-error" : undefined}
           className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary"
         />
@@ -87,6 +88,13 @@ function QuickTodoInput({ tags = [] }: QuickTodoInputProps) {
             </select>
           </div>
         )}
+        <Button
+          type="submit"
+          disabled={createMutation.isPending}
+          className="shrink-0"
+        >
+          追加
+        </Button>
       </div>
       {errorMessage && (
         <p id="quick-todo-error" role="alert" className="text-sm text-danger">

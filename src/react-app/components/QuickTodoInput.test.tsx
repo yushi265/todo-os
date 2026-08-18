@@ -28,16 +28,16 @@ afterEach(() => {
 });
 
 describe("QuickTodoInput", () => {
-  it("renders an accessible title input without an add button", () => {
+  it("renders an accessible title input and add button", () => {
     renderWithQueryClient(<QuickTodoInput />);
 
     const form = screen.getByRole("form", {
       name: "TODOのクイック追加フォーム",
     });
     expect(screen.getByLabelText("クイック追加")).toHaveClass("min-h-11");
-    expect(
-      screen.queryByRole("button", { name: "追加" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "追加" })).toHaveClass(
+      "min-h-11",
+    );
     expect(screen.queryByLabelText("追加時のタグ")).not.toBeInTheDocument();
     expect(form).toBeInTheDocument();
   });
@@ -57,6 +57,27 @@ describe("QuickTodoInput", () => {
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({ title: "クイックタスク" }),
+        }),
+      );
+    });
+    await waitFor(() => expect(input).toHaveValue(""));
+  });
+
+  it("creates a title-only todo when the add button is clicked", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue(jsonResponse({ id: 1 }, 201));
+    renderWithQueryClient(<QuickTodoInput />);
+
+    const input = screen.getByLabelText("クイック追加");
+    await user.type(input, "ボタンで追加するタスク");
+    await user.click(screen.getByRole("button", { name: "追加" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/todos",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ title: "ボタンで追加するタスク" }),
         }),
       );
     });
