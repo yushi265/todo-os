@@ -5,6 +5,8 @@ import type {
 } from "react";
 import type { TodoResponse } from "../../shared/types";
 import { dueDateStatus, type DueDateStatus } from "../lib/dueDateStatus";
+import { containsHttpUrl } from "../lib/linkify";
+import LinkifiedText from "./LinkifiedText";
 import {
   nextStatus,
   PRIORITY_ICON,
@@ -86,6 +88,8 @@ function TodoListItem({
 }: TodoListItemProps) {
   const dueStatus = dueDateStatus(todo.dueDate, todo.status);
   const next = nextStatus(todo.status);
+  const description = todo.description?.trim() ?? "";
+  const descriptionHasUrl = containsHttpUrl(description);
 
   return (
     <TodoCardShell
@@ -125,16 +129,23 @@ function TodoListItem({
       onTouchCancel={onTouchCancel}
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1 px-3 sm:px-2.5">
-        <span className="text-sm font-medium text-text-primary">
-          {todo.title}
-        </span>
-        {(todo.description?.trim() ||
+        <LinkifiedText
+          text={todo.title}
+          className="text-sm font-medium text-text-primary"
+        />
+        {descriptionHasUrl && (
+          <LinkifiedText
+            text={description}
+            className="line-clamp-2 break-words text-xs text-text-secondary"
+          />
+        )}
+        {(description ||
           todo.priority ||
           todo.dueDate ||
           todo.tags.length > 0 ||
           todo.subtasks.length > 0) && (
           <span className="flex w-full min-w-0 flex-nowrap items-center gap-x-2 overflow-x-auto text-sm text-text-secondary sm:gap-x-1.5 sm:text-xs">
-            {todo.description?.trim() && <TodoDescriptionIndicator />}
+            {description && !descriptionHasUrl && <TodoDescriptionIndicator />}
             {todo.priority && (
               <span
                 role="img"

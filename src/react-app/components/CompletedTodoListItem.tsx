@@ -1,6 +1,8 @@
 import type { TodoResponse } from "../../shared/types";
 import { formatDateTimeInTokyo } from "../lib/formatDateTime";
+import { containsHttpUrl } from "../lib/linkify";
 import { STATUS_ICON, STATUS_ICON_CLASSES } from "../lib/statusStyles";
+import LinkifiedText from "./LinkifiedText";
 import TagBadge from "./TagBadge";
 import TodoCardShell from "./TodoCardShell";
 import TodoDescriptionIndicator from "./TodoDescriptionIndicator";
@@ -23,6 +25,8 @@ function CompletedTodoListItem({
 }: CompletedTodoListItemProps) {
   // props 契約上は DONE/CANCELED のみが渡される想定（TodoList が振り分ける）。
   const iconKey = todo.status === "DONE" ? "DONE" : "CANCELED";
+  const description = todo.description?.trim() ?? "";
+  const descriptionHasUrl = containsHttpUrl(description);
 
   return (
     <TodoCardShell
@@ -40,11 +44,18 @@ function CompletedTodoListItem({
       onDeleteClick={onDeleteClick}
     >
       <div className="flex min-w-0 flex-1 flex-col items-stretch gap-1 text-left">
-        <span className="font-medium text-text-secondary line-through">
-          {todo.title}
-        </span>
+        <LinkifiedText
+          text={todo.title}
+          className="font-medium text-text-secondary line-through"
+        />
+        {descriptionHasUrl && (
+          <LinkifiedText
+            text={description}
+            className="line-clamp-2 break-words text-xs text-text-tertiary"
+          />
+        )}
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-tertiary sm:text-xs">
-          {todo.description?.trim() && <TodoDescriptionIndicator />}
+          {description && !descriptionHasUrl && <TodoDescriptionIndicator />}
           <span>{formatDateTimeInTokyo(todo.updatedAt)}</span>
           <TodoSubtaskProgress subtasks={todo.subtasks} />
         </span>

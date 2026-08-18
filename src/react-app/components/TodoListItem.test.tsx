@@ -251,6 +251,38 @@ describe("TodoListItem", () => {
     expect(icon.querySelector("svg")).toBeInTheDocument();
   });
 
+  it("linkifies URLs in the title and description without opening the card", async () => {
+    const todo = makeTodo({
+      title: "資料 https://example.com/docs",
+      description: "補足 https://example.com/help",
+    });
+    const onClick = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <ul>
+        <TodoListItem
+          todo={todo}
+          onClick={onClick}
+          onDeleteClick={vi.fn()}
+          onAdvanceStatus={vi.fn()}
+        />
+      </ul>,
+    );
+
+    const titleLink = screen.getByRole("link", {
+      name: "https://example.com/docs",
+    });
+    const descriptionLink = screen.getByRole("link", {
+      name: "https://example.com/help",
+    });
+    expect(titleLink).toHaveAttribute("href", "https://example.com/docs");
+    expect(descriptionLink).toHaveAttribute("href", "https://example.com/help");
+
+    await user.click(titleLink);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
   it.each([null, "", "   "])(
     "does not show a description icon when the description is empty (%j)",
     (description) => {
